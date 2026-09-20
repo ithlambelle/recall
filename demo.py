@@ -17,8 +17,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--agent", default="rule", choices=["rule", "claude"])
     ap.add_argument("--policy", default="permissive", choices=["permissive", "enforce"])
+    ap.add_argument("--jev", action="store_true", help="use Jev to prioritize counterfactual tests")
     args = ap.parse_args()
     st, agent, tasks = scenario.build(args.policy), make_agent(args.agent), scenario.TASKS
+    triage = None
+    if args.jev:
+        from recall import env
+        env.load()
+        from recall.jev import JevTriage
+        triage = JevTriage()
 
     show("1. Memory store after the agent read a spoofed vendor page", st)
     print("\n2. Agent runs this week's payables:")
@@ -31,12 +38,18 @@ def main():
     print("\n3. Recall diagnoses harmful actions (counterfactual reruns):")
     diagnosed = set()
     for t in tasks.values():
-        dg = diagnose(st, agent, t)
+        dg = diagnose(st, agent, t, triage=triage)
         if dg.harmful:
             print(f"  {t['id']}: leave-one-out {dg.loo}")
             print(f"      no single memory is causal -> {dg.method}: {dg.repair_set}" if not any(dg.loo.values())
                   else f"      causal memory: {dg.repair_set}")
             diagnosed |= set(dg.repair_set)
+            if dg.triage:
+                ranked = ", ".join(f"{x['memory_id']}={x['suspicious_probability']:.2f}"
+                                   for x in dg.triage)
+                print(f"      Jev priority: {ranked}")
+            if dg.triage_error:
+                print(f"      Jev unavailable; used provenance fallback ({dg.triage_error})")
     show("   Diagnosed memories", st, diagnosed)
     for mid in sorted(diagnosed):
         print(f"   {mid} [{st.get(mid).source.value}, trust {st.get(mid).trust}]: {st.get(mid).content}")
@@ -55,6 +68,8 @@ def main():
     print(f"  {len(st.active())} memories still active; replayed {len(rep.replayed)} actions "
           f"({rep.calls} calls), {untouched} actions left untouched")
     show("5. Memory store after repair", st)
+    if triage:
+        print(f"\nJev: {triage.calls} batched calls, {len(triage.failures)} failures")
 
 
 if __name__ == "__main__":

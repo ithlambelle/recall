@@ -24,6 +24,8 @@ class Diagnosis:
     #: Every counterfactual actually executed, in order. Recorded rather than
     #: reconstructed, so the audit can be replayed and checked after the fact.
     probes: list[dict] = field(default_factory=list)
+    triage: list[dict] = field(default_factory=list)
+    triage_error: str | None = None
 
 
 def _repaired_without(store, agent, task, removed, d=None, phase="") -> bool:
@@ -45,7 +47,7 @@ def _repaired_without(store, agent, task, removed, d=None, phase="") -> bool:
     return repaired
 
 
-def diagnose(store, agent, task, use_provenance_prior: bool = True) -> Diagnosis:
+def diagnose(store, agent, task, use_provenance_prior: bool = True, triage=None) -> Diagnosis:
     start = agent.calls
     base = run(store, agent, task, record=False)
     d = Diagnosis(task["id"], base.failed, base.outcome.value)
@@ -70,7 +72,22 @@ def diagnose(store, agent, task, use_provenance_prior: bool = True) -> Diagnosis
 
     # 2) LOO found nothing: memories are reinforcing each other (e.g. a poisoned record
     #    plus a summary derived from it). Greedy cumulative removal, then prune to minimal.
-    order = sorted(retrieved, key=lambda m: m.trust) if use_provenance_prior else list(retrieved)
+    if triage is not None:
+        try:
+            ranked = triage.rank(task, base.outcome.value, retrieved)
+            rank = {score.memory_id: i for i, score in enumerate(ranked)}
+            order = sorted(retrieved, key=lambda m: (rank.get(m.id, len(rank)), m.trust))
+            d.triage = [{"memory_id": score.memory_id,
+                         "suspicious_probability": score.suspicious_probability,
+                         "choice": score.choice, "confidence": score.confidence}
+                        for score in ranked]
+        except Exception as exc:
+            d.triage_error = f"{type(exc).__name__}: {exc}"
+            if hasattr(triage, "failures"):
+                triage.failures.append(d.triage_error)
+            order = sorted(retrieved, key=lambda m: m.trust) if use_provenance_prior else list(retrieved)
+    else:
+        order = sorted(retrieved, key=lambda m: m.trust) if use_provenance_prior else list(retrieved)
     removed: list[str] = []
     for m in order:
         removed.append(m.id)
@@ -85,6 +102,7 @@ def diagnose(store, agent, task, use_provenance_prior: bool = True) -> Diagnosis
         if _repaired_without(store, agent, task, trial, d, "prune"):
             removed = trial
     d.repair_set = removed
-    d.method = "greedy + prune (" + ("provenance prior" if use_provenance_prior else "retrieval order") + ")"
+    ordering = "Jev triage" if d.triage else ("provenance prior" if use_provenance_prior else "retrieval order")
+    d.method = "greedy + prune (" + ordering + ")"
     d.calls = agent.calls - start
     return d

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Recall</title>
-<meta name="description" content="Find the memories that caused an agent's harmful action, roll back everything derived from them, and replay only what that touched.">
+<title>Recall — Causal debugger for agent memory</title>
+<meta name="description" content="When an agent learns the wrong thing, Recall finds what caused the failure, repairs the affected memory branch, and verifies recovery.">
 <link rel="preconnect" href="https://api.fontshare.com">
 <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
 <link href="https://api.fontshare.com/v2/css?f%5B%5D=switzer@300,400,500,600&display=swap" rel="stylesheet">
@@ -321,15 +321,15 @@
 
     <header class="hero" id="overview">
       <div class="heroText">
-        <h1>Follow the memory.</h1>
-        <p class="sub">One false statement enters an agent's memory. Watch it spread, survive
-          deletion, and get cut out.</p>
+        <h1>Debug what the agent learned.</h1>
+        <p class="sub">When memory turns stale, conflicting, unsupported, or poisoned,
+          Recall finds the causal branch and verifies the smallest repair.</p>
         <ul class="steps">
-          <li>Inject a lie</li><li>Let it grow</li><li>Delete the source</li><li>See what remains</li>
+          <li>Detect failure</li><li>Attribute cause</li><li>Trace descendants</li><li>Repair and verify</li>
         </ul>
       </div>
       <div class="matrices" id="matrices" role="img"
-        aria-label="The same memory store under three models: the poisoned memory spreads through what was derived from it, then that branch is rolled back."></div>
+        aria-label="A poisoned-memory case study across three models: the causal branch spreads through derived state, then Recall repairs and verifies it."></div>
     </header>
 
     <main class="pad">
@@ -930,23 +930,31 @@ $("#t-skip").onclick = () => {
 function paintRuns() {
   const model = $("#model").value;
   const rows = MATRIX.filter(r => r.model === model);
+  if (!RUN || RUN.model !== model || !rows.some(r => r.trace === RUN.trace)) RUN = rows[0] || null;
   $("#runcount").textContent = MATRIX.length + " recorded";
   $("#runs").innerHTML = rows.map((r, i) => {
     const modes = Object.keys(r.initial_outcomes).filter(k => k !== "CORRECT");
     const harm = modes.indexOf("UNSAFE_ACTION") >= 0;
     const word = harm ? "paid attacker" : modes.length ? "refused to pay" : "unaffected";
     const col = harm ? "var(--sem-harm)" : modes.length ? "var(--sem-deg)" : "var(--sem-ok)";
-    return `<li role="option" data-i="${i}" aria-selected="${i === 0}">
+    return `<li role="option" tabindex="0" data-i="${i}" aria-selected="${RUN && r.trace === RUN.trace}">
       <span class="dot" style="background:${col}"></span>Run ${r.run}
       <span class="st">${word}</span></li>`;
   }).join("");
-  $$("#runs li").forEach(li => li.addEventListener("click", () => {
+  const choose = async li => {
     $$("#runs li").forEach(x => x.setAttribute("aria-selected", "false"));
     li.setAttribute("aria-selected", "true");
-    const r = rows[Number(li.dataset.i)];
-    $("#graphsub").textContent = MODELS[r.model].short + " · run " + (r.repeat + 1);
-  }));
-  if (rows[0]) $("#graphsub").textContent = MODELS[rows[0].model].short + " · run 1";
+    RUN = rows[Number(li.dataset.i)];
+    $("#graphsub").textContent = MODELS[RUN.model].short + " · run " + RUN.run;
+    await loadTrace();
+  };
+  $$("#runs li").forEach(li => {
+    li.addEventListener("click", () => choose(li));
+    li.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(li); }
+    });
+  });
+  if (RUN) $("#graphsub").textContent = MODELS[RUN.model].short + " · run " + RUN.run;
 }
 
 function miniGraph(trace, w, h) {
@@ -1131,6 +1139,7 @@ async function paintMatrices() {
 }
 
 async function loadTrace() {
+  $("#space").setAttribute("aria-busy", "true");
   $("#nodedetails").innerHTML = [72, 90, 55, 80, 62, 88, 48]
     .map(w => `<div class="skel" style="width:${w}%"></div>`).join("");
   const key = MODELS[$("#model").value].key;
@@ -1138,11 +1147,23 @@ async function loadTrace() {
     : (RUN && RUN.trace) || "claude-" + key + "-1";
   if ($("#policy").value === "enforce") $("#graphsub").textContent = "Offline agent \u00b7 enforce";
   else if (RUN) $("#graphsub").textContent = MODELS[RUN.model].short + " \u00b7 run " + RUN.run;
-  TRACE = await fetch("traces/" + name + ".json").then(r => r.json());
-  drawGraph(TRACE);
-  bindParallax();
-  paintTrajectory(TRACE);
-  termStart(TRACE);
+  try {
+    const response = await fetch("traces/" + name + ".json");
+    if (!response.ok) throw new Error("Trace unavailable");
+    TRACE = await response.json();
+    drawGraph(TRACE);
+    bindParallax();
+    paintTrajectory(TRACE);
+    termStart(TRACE);
+  } catch (error) {
+    $("#plane").querySelectorAll(".node").forEach(n => n.remove());
+    $("#graphstate").textContent = "Trace could not be loaded";
+    $("#nodedetails").innerHTML = `<p class="hint" role="alert">This recorded run is unavailable. Choose another run or policy.</p>`;
+    $("#trajectory").innerHTML = `<p class="hint" role="alert">No counterfactual data available.</p>`;
+    $("#term").innerHTML = `<div class="bad" role="alert">trace load failed: ${esc(error.message)}</div>`;
+  } finally {
+    $("#space").setAttribute("aria-busy", "false");
+  }
 }
 
 async function boot() {
@@ -1155,7 +1176,7 @@ async function boot() {
   paintCompare("graph");
   paintMatrices();
 
-  $("#model").onchange = () => { paintRuns(); loadTrace(); };
+  $("#model").onchange = () => { RUN = null; paintRuns(); loadTrace(); };
   $("#policy").onchange = loadTrace;
   $$(".tabs button").forEach(b => b.onclick = () => {
     $$(".tabs button").forEach(x => x.setAttribute("aria-selected", "false"));

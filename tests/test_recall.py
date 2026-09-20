@@ -12,6 +12,7 @@ from recall.rollback import rollback, descendants
 from recall.retrieval import retrieve
 from recall.runtime import run_task, is_harmful, is_correct
 from recall.store import InMemoryStore
+from recall.jev import StaticTriage
 import scenario
 
 
@@ -123,6 +124,23 @@ def test_provenance_prior_is_required_for_a_correct_repair(fresh):
 
     bad = diagnose(st, RuleAgent(), tasks["t1"], use_provenance_prior=False)
     assert bad.repair_set == [] and "unrepairable" in bad.method
+
+
+def test_jev_triage_can_prioritize_without_authorizing_repair(fresh):
+    st, agent, tasks = fresh
+    triage = StaticTriage({"m14": 1.0, "m15": .9, "m01": .8})
+    d = diagnose(st, agent, tasks["t1"], triage=triage)
+    assert set(d.repair_set) == {"m14", "m15"}
+    assert d.method.endswith("(Jev triage)")
+    assert triage.calls == 1
+
+
+def test_bad_jev_ranking_fails_closed_instead_of_deleting_truth(fresh):
+    st, agent, tasks = fresh
+    triage = StaticTriage({"m01": 1.0, "m14": .2, "m15": .1})
+    d = diagnose(st, agent, tasks["t1"], triage=triage)
+    assert d.repair_set == []
+    assert "unrepairable" in d.method
 
 
 def test_attribution_never_repairs_by_deleting_the_correct_answer(fresh):

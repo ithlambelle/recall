@@ -25,7 +25,8 @@ def _decision_dict(d: dict) -> dict:
     return {"tool": d["tool"], "args": d["args"], "recipient": d["args"].get("recipient")}
 
 
-def run_pipeline(agent, policy_mode: str = "permissive", use_provenance_prior: bool = True) -> dict:
+def run_pipeline(agent, policy_mode: str = "permissive", use_provenance_prior: bool = True,
+                 triage=None) -> dict:
     """Poison -> harmful run -> counterfactual diagnosis -> rollback -> replay.
 
     Returns a JSON-serializable trace. `agent` is supplied by the caller so the
@@ -75,7 +76,7 @@ def run_pipeline(agent, policy_mode: str = "permissive", use_provenance_prior: b
     diagnoses = []
     audit_calls = 0
     for t in tasks.values():
-        dg = diagnose(store, agent, t, use_provenance_prior=use_provenance_prior)
+        dg = diagnose(store, agent, t, use_provenance_prior=use_provenance_prior, triage=triage)
         audit_calls += dg.calls
         diagnosed |= set(dg.repair_set)
         diagnoses.append({
@@ -88,6 +89,8 @@ def run_pipeline(agent, policy_mode: str = "permissive", use_provenance_prior: b
             "repair_set": list(dg.repair_set),
             "calls": dg.calls,
             "probes": dg.probes,
+            "triage": dg.triage,
+            "triage_error": dg.triage_error,
         })
     steps.append({
         "kind": "diagnose",
@@ -145,6 +148,8 @@ def run_pipeline(agent, policy_mode: str = "permissive", use_provenance_prior: b
         "poison_left": len(scenario.POISON_IDS & active),
         "repair_calls": audit_calls + rollback_step["calls"],
         "agent_calls_total": agent.calls,
+        "jev_calls": getattr(triage, "calls", 0),
+        "jev_failures": list(getattr(triage, "failures", [])),
         "outcome_counts": _counts(fr.outcome.value for fr in final_runs),
     }
     if hasattr(agent, "usage"):
