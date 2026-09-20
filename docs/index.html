@@ -218,6 +218,40 @@
   footer{border-top:var(--hair) solid var(--line);padding:var(--s-7) 0 var(--s-10);
     color:var(--ink-3);font-size:var(--t-small);max-width:var(--m-wide)}
 
+
+  /* ---- console: the run as an instrument panel -------------------------
+     Five stages, one per pipeline phase, filling as the audit proceeds.
+     The figure and the dials read real counts from the trace. */
+  .console{background:var(--sunken);border:var(--hair) solid var(--line);
+    padding:var(--s-6) var(--s-6) var(--s-5)}
+  .console-top{display:flex;align-items:flex-start;gap:var(--s-6);margin-bottom:var(--s-8)}
+  .console-id{font-family:var(--mono);font-size:var(--t-micro);letter-spacing:var(--track-micro);
+    text-transform:uppercase;color:var(--ink-3);line-height:2}
+  .console-id b{color:var(--ink);font-weight:var(--w-med)}
+  .figure{margin-left:auto;text-align:right}
+  .figure span{display:block;font-family:var(--mono);font-size:var(--t-micro);
+    letter-spacing:var(--track-micro);text-transform:uppercase;color:var(--ink-3)}
+  .figure b{display:block;font-size:clamp(40px,6vw,76px);font-weight:var(--w-light);
+    letter-spacing:-.04em;line-height:1;margin-top:var(--s-2);font-variant-numeric:tabular-nums}
+
+  .stagebar{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+  .stage{position:relative}
+  .stage .track{height:10px;background:var(--line);overflow:hidden}
+  .stage .fill{height:100%;width:0;background:var(--st);
+    transition:width var(--dur-3) var(--ease)}
+  .stage[data-on=true] .fill{width:100%}
+  .stage .name{display:block;margin-top:var(--s-2);font-family:var(--mono);
+    font-size:var(--t-micro);letter-spacing:var(--track-micro);text-transform:uppercase;
+    color:var(--ink-3);transition:color var(--dur-2) var(--ease)}
+  .stage[data-on=true] .name{color:var(--ink)}
+  .stage .val{display:block;font-family:var(--mono);font-size:var(--t-fine);
+    color:var(--ink-3);margin-top:var(--s-1);font-variant-numeric:tabular-nums}
+  .stage[data-on=true] .val{color:var(--st)}
+  @media (max-width:720px){
+    .stagebar{grid-template-columns:repeat(2,1fr);gap:var(--s-4) 3px}
+    .console{padding:var(--s-5) var(--s-4)}
+  }
+
   .hidden{display:none}
 
   /* Motion is opt-out. Every state still resolves to its final, readable form. */
@@ -273,6 +307,14 @@
         <button data-v="report" aria-pressed="false">Detail</button>
       </span>
       <span class="dim" id="status" role="status"></span>
+    </div>
+
+    <div class="console">
+      <div class="console-top">
+        <p class="console-id" id="consoleid"></p>
+        <p class="figure"><span id="figlabel">Tasks recovered</span><b id="figval">&mdash;</b></p>
+      </div>
+      <div class="stagebar" id="stagebar" role="img" aria-label="Pipeline progress"></div>
     </div>
 
     <div class="term" id="termwrap">
@@ -514,7 +556,8 @@ function termLines(trace) {
   const init = S("initial"), runs = S("run"), diag = S("diagnose"),
         rb = S("rollback"), fin = S("final"), sum = trace.summary;
   const L = [];
-  const add = (t = "", c = "", d = 24) => L.push({t, c, d});
+  let stage = "write";
+  const add = (t = "", c = "", d = 24) => L.push({t, c, d, st: stage});
   const model = (sum.usage && sum.usage.model) || "offline agent";
 
   add(`$ recall run --agent ${model} --policy ${trace.policy}`, "cmd", 400);
@@ -530,6 +573,7 @@ function termLines(trace) {
   });
   add(`         trust is set by provenance, never by reading content`, "dim", 320);
   add();
+  stage = "run";
   add("$ agent run-payables", "cmd", 380);
   runs.runs.forEach(r => {
     const c = r.outcome === "CORRECT" ? "ok" : r.outcome === "UNSAFE_ACTION" ? "bad" : "warn";
@@ -539,6 +583,7 @@ function termLines(trace) {
   add(`         ${runs.failed_count} of ${runs.runs.length} tasks failed because of memory`,
       runs.failed_count ? "bad" : "dim", 320);
   add();
+  stage = "diagnose";
   diag.diagnoses.filter(d => d.harmful).forEach(d => {
     add(`$ recall diagnose ${d.task_id}`, "cmd", 360);
     add(`  baseline: ${d.outcome}`, "bad", 200);
@@ -565,6 +610,7 @@ function termLines(trace) {
     add(`  repair set {${d.repair_set.join(", ")}} via ${d.method}`, "ok", 400);
     add();
   });
+  stage = "rollback";
   if (rb.diagnosed.length) {
     add(`$ recall rollback --diagnosed ${rb.diagnosed.join(",")}`, "cmd", 380);
     const byId = Object.fromEntries(fin.memories.map(m => [m.id, m]));
@@ -578,6 +624,7 @@ function termLines(trace) {
       add(`  could have found it. The graph catches it.`, "warn", 400);
     }
     add();
+    stage = "replay";
     add("$ recall replay --affected-only", "cmd", 360);
     rb.replayed.forEach(r => add(`  ${pad(r.old_action, 4)} (${r.task_id}) ` +
       `${pad(r.decision.recipient || r.decision.tool, 40)} ${r.outcome}`,
@@ -595,6 +642,47 @@ function termLines(trace) {
   return L;
 }
 
+const STAGES = [
+  // A narrative progression, each colour keeping its meaning: memory forms,
+  // harm lands, the audit investigates, the branch is cut, the work is redone.
+  {k: "write",    name: "Write",    col: "var(--prov-derived)"},
+  {k: "run",      name: "Run",      col: "var(--sem-harm)"},
+  {k: "diagnose", name: "Diagnose", col: "var(--sem-degraded)"},
+  {k: "rollback", name: "Rollback", col: "var(--sem-info)"},
+  {k: "replay",   name: "Replay",   col: "var(--sem-safe)"},
+];
+
+function buildConsole(trace) {
+  const S = k => trace.steps.find(x => x.kind === k);
+  const init = S("initial"), runs = S("run"), diag = S("diagnose"),
+        rb = S("rollback"), sum = trace.summary;
+  const probes = diag.diagnoses.reduce((n, d) => n + (d.probes || []).length, 0);
+  const vals = {
+    write: `${init.memories.length} stored`,
+    run: `${runs.failed_count}/${runs.runs.length} failed`,
+    diagnose: `${probes} counterfactuals`,
+    rollback: `${rb.deactivated.length} cut, ${rb.preserved.length} kept`,
+    replay: `${rb.replayed.length} redone`,
+  };
+  $("#stagebar").innerHTML = STAGES.map(st =>
+    `<div class="stage" data-k="${st.k}" data-on="false" style="--st:${st.col}">
+       <div class="track"><div class="fill"></div></div>
+       <span class="name">${st.name}</span>
+       <span class="val">${vals[st.k]}</span>
+     </div>`).join("");
+  const model = (sum.usage && sum.usage.model) || "offline stand-in";
+  $("#consoleid").innerHTML =
+    `Agent <b>${model}</b><br>Policy <b>${trace.policy}</b><br>` +
+    `Repair calls <b>${sum.repair_calls}</b>`;
+  $("#figval").textContent = `${sum.recovered}/${sum.tasks}`;
+}
+
+function paintStages() {
+  const reached = new Set(term.lines.slice(0, term.i).map(l => l.st));
+  document.querySelectorAll(".stage").forEach(el =>
+    el.setAttribute("data-on", String(reached.has(el.dataset.k))));
+}
+
 const term = {lines: [], i: 0, timer: null, speed: 1, playing: false};
 
 function termRender() {
@@ -603,6 +691,7 @@ function termRender() {
     .map(l => `<div class="${l.c}">${esc(l.t) || "&nbsp;"}</div>`).join("") +
     (term.i < term.lines.length ? '<span class="cursor"></span>' : "");
   el.scrollTop = el.scrollHeight;
+  paintStages();
 }
 function termStep() {
   if (term.i >= term.lines.length) {
@@ -696,6 +785,7 @@ async function load(body) {
       j = await staticTrace(body);
     }
     TRACE = j;
+    buildConsole(j);
     paintStrip(j.steps.find(x => x.kind === "final").memories);
     render(j);
     termStart(j);
