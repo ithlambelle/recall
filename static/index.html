@@ -206,10 +206,49 @@
   .ok{color:var(--sem-ok)} .harm{color:var(--sem-harm)} .deg{color:var(--sem-deg)}
 
   .prose{max-width:66ch;color:var(--ink-2)}
+  .prose h3{font-size:var(--t-lede);font-weight:var(--w-med);color:var(--ink);
+    margin:var(--s-6) 0 var(--s-3);letter-spacing:-.01em}
+  .prose h3 a{color:inherit}
+  .prose b{color:var(--ink);font-weight:var(--w-med)}
+  .prose code{font-family:var(--mono);font-size:var(--t-fine);color:var(--ink-2)}
+  .prose .dim{font-size:var(--t-small);color:var(--ink-3)}
   .prose h2{font-size:var(--t-h3);font-weight:var(--w-light);letter-spacing:-.03em;
     color:var(--ink);margin:var(--s-8) 0 var(--s-4)}
   .prose p{margin:0 0 var(--s-4)}
   .prose a{color:var(--n-source)}
+
+
+  /* ---- memory space: 2.5D depth without WebGL -------------------------
+     Depth is not decoration. A node's z is its graph distance from the
+     selected memory, so selecting one pulls its lineage forward and pushes
+     unrelated memories back and out of focus. The page performs the same
+     operation the system does: retrieval changes what is in context. */
+  .space{position:relative;perspective:1200px;perspective-origin:50% 45%;
+    height:420px;overflow:hidden;background:
+      radial-gradient(120% 90% at 50% 40%, rgba(74,158,255,.05), transparent 70%)}
+  .space .plane{position:absolute;inset:0;transform-style:preserve-3d;
+    transition:transform 420ms var(--ease)}
+  .space svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .space .edge{fill:none;transition:stroke .42s var(--ease),opacity .42s var(--ease),
+    stroke-width .42s var(--ease)}
+  .node{position:absolute;left:0;top:0;transform-origin:center;
+    display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:5px;
+    background:rgba(14,16,22,.82);border:1px solid var(--line-2);
+    font-size:11px;font-family:var(--mono);color:var(--ink-2);white-space:nowrap;
+    cursor:pointer;
+    transition:transform .5s var(--ease),opacity .5s var(--ease),filter .5s var(--ease),
+      border-color .3s var(--ease),background .3s var(--ease)}
+  .node i{width:7px;height:7px;border-radius:50%;flex:none}
+  .node.task{border-radius:2px;border-style:solid}
+  .node[data-sel=true]{border-color:var(--ink);background:var(--raised);color:var(--ink);
+    z-index:3}
+  .node:hover{border-color:var(--ink-3)}
+  .space .depthkey{position:absolute;right:var(--s-4);bottom:var(--s-3);
+    font-family:var(--mono);font-size:var(--t-micro);color:var(--ink-3);text-align:right;
+    line-height:1.7;pointer-events:none}
+  @media (prefers-reduced-motion:reduce){
+    .space .plane,.node,.space .edge{transition:none}
+  }
 
   /* ---- terminal: the recorded audit, replayed line by line ---- */
   .term{background:var(--sunken);border-top:var(--hair) solid var(--line)}
@@ -321,10 +360,12 @@
               <span><i style="border-radius:2px;background:none;border:1.5px solid var(--ink-3)"></i>Task</span>
             </span></header>
           <div class="body flush">
-            <div class="graphbox" id="graphbox">
-              <svg id="graph" viewBox="0 0 760 420" role="img"
-                aria-label="Memory provenance graph. Click a node for details."></svg>
-
+            <div class="space" id="space">
+              <div class="plane" id="plane">
+                <svg id="graph" viewBox="0 0 760 420" aria-hidden="true"></svg>
+              </div>
+              <p class="depthkey">near: in the selected memory's lineage<br>
+                far: not retrieved with it</p>
             </div>
             <p class="hint"><span>Click a node for details</span><span id="graphstate"></span></p>
             <div class="term">
@@ -374,9 +415,11 @@
                 <p>The agent's own summary restates the attacker's address. Removing only the
                   web page leaves 2 of 4 tasks still paying the attacker.</p></div></li>
               <li><span class="num">2</span><div>
-                <h3>Models break differently</h3>
-                <p>Haiku and Opus pay the attacker. Sonnet usually refuses instead, so real
-                  invoices go unpaid. Both are failures; only one moves money.</p></div></li>
+                <h3>The failure mode is not stable</h3>
+                <p>All three models fail both poisoned tasks in every run. Haiku and Opus always
+                  pay the attacker. Sonnet varies run to run, sometimes paying and sometimes
+                  refusing, which leaves real invoices unpaid. A binary oracle scores the refusal
+                  as success and repairs nothing.</p></div></li>
               <li><span class="num">3</span><div>
                 <h3>Trust comes from provenance</h3>
                 <p>Recall never reads content, only lineage. A convincing lie defeats content
@@ -405,13 +448,76 @@
           ever retrieves are caught too, and only actions that consumed a deactivated memory are
           replayed.</p>
         <h2>Built on</h2>
-        <p><a href="https://arxiv.org/abs/2503.03704">MINJA</a> supplies the threat model.
-          <a href="https://arxiv.org/abs/2605.23723">MemAudit</a> supplies counterfactual
-          diagnosis and names mutually reinforcing memories as its weak spot, which is exactly
-          the case here. <a href="https://arxiv.org/abs/2608.10502">Dependency-guided rollback
-          repair</a> supplies the repair but assumes diagnosis is given.
-          <a href="https://arxiv.org/abs/2506.04202">TracLLM</a> is the leave-one-out baseline.
-          We found no public implementation of the middle two, and nothing joining them.</p>
+        <p>Four papers define the problem and the two halves of the solution. What follows is
+          what each contributes, and exactly what we took.</p>
+
+        <h3><a href="https://arxiv.org/abs/2503.03704">MINJA</a> &mdash; the threat model</h3>
+        <p>An attacker poisons an agent's memory using nothing but ordinary queries. No database
+          access, no privileged position. The attack injects a malicious record, adds bridging
+          steps that link ordinary victim queries to the malicious reasoning, then uses an
+          indication prompt to get the agent to generate those bridging steps itself. A
+          progressive shortening strategy withdraws the prompt, leaving a record that stays
+          retrievable for future queries.</p>
+        <p><b>What we took.</b> The shape of the threat: the agent poisons itself by processing
+          attacker-controlled content, and the record it writes looks like its own work. Our
+          scenario is a single-step version of this. The agent reads a spoofed vendor notice and
+          stores it, then consolidates it into a supplier profile, which is the laundering step
+          that makes the claim look self-derived.</p>
+
+        <h3><a href="https://arxiv.org/abs/2605.23723">MemAudit</a> &mdash; diagnosis</h3>
+        <p>Audits a poisoned memory store after harm has already occurred. It computes a
+          counterfactual memory influence score measuring each record's causal contribution to
+          the harmful output, and pairs it with a memory consistency graph that flags records
+          which are structurally anomalous against the rest of the store. Evaluated against
+          MINJA, it reports attack success falling from 70% to 0% on QA and from 83.3% to 0% on
+          the reasoning-agent setting.</p>
+        <p><b>What we took.</b> The counterfactual half. Influence here is deliberately crude and
+          behavioural rather than a continuous score: withhold a memory, re-run the task, and ask
+          whether the outcome became correct. That makes attribution checkable without a model of
+          its own. We did not implement the structural anomaly detector, which is the half that
+          reasons about content and consistency.</p>
+        <p><b>Where it stops.</b> MemAudit ranks and removes. It answers which memories were
+          responsible, not what to do about everything written from them afterwards.</p>
+
+        <h3><a href="https://arxiv.org/abs/2608.10502">Dependency-guided rollback repair</a>
+          &mdash; repair</h3>
+        <p>Builds a typed memory-to-action graph from runtime provenance, traces explicit
+          downstream dependencies from the faulty memories through later reasoning, tool calls
+          and memory writes, and then selectively replays only the affected computation rather
+          than the whole trace. It reports 85.3% recovery against 77.3% for the best competing
+          method on a 150-case controlled benchmark, and 68.0% against 54.0% on a 50-case stress
+          test drawn from LongMemEval-V2.</p>
+        <p><b>What it assumes.</b> Two inputs: a failed execution, and the diagnosed faulty
+          memories. The diagnosis is given to it.</p>
+        <p><b>What we took.</b> The dependency closure and selective replay. Our store records
+          which memories each action consumed and which memories were derived from which, so the
+          closure is a walk over that graph. We added one rule the paper does not need: a derived
+          memory with independent support from a still-trusted memory survives the rollback, which
+          is how <code>m17</code> stays alive while its parent is cut.</p>
+
+        <h3><a href="https://arxiv.org/abs/2506.04202">TracLLM</a> &mdash; the baseline</h3>
+        <p>A framework for attributing a long-context model's output back to pieces of its
+          context, using leave-one-out and Shapley-style methods with search to keep the cost
+          tractable.</p>
+        <p><b>What we took.</b> Leave-one-out, as the thing to beat. It is the first pass in our
+          attribution and it returns nothing here, which is the result the rest of the method
+          exists to handle.</p>
+
+        <h2>The gap, and what we add</h2>
+        <p>MemAudit ends where diagnosis ends. The rollback paper begins after diagnosis is handed
+          to it. Neither cites the other and we found no public implementation of either, so the
+          join between them has not been built. Recall is that join: diagnosis output becomes
+          repair input, with no human in between.</p>
+        <p>Chaining them surfaced two things neither paper's framing predicts. First,
+          leave-one-out returns nothing when a poisoned record and a summary derived from it each
+          restate the same claim, because removing either leaves the other answering. We fall back
+          to cumulative removal ordered by ascending provenance trust, then prune to a minimal
+          set. Second, a repair has to be defined as the task <i>succeeding</i>, not merely
+          ceasing to fail: if any non-failure counts, deleting the memory holding the correct
+          answer scores as a perfect fix, and against Sonnet 5 our pipeline did exactly that until
+          we corrected the objective.</p>
+        <p class="dim">The weak-spot framing above is our own finding from running the chain. The
+          MemAudit abstract does not name it, and we have not verified it against the full text.</p>
         <h2>Honest limits</h2>
         <p>The consolidation step that creates the derived profile is scripted rather than
           produced by the agent. Real-model runs are not reproducible, so figures are quoted
@@ -433,7 +539,7 @@ const MODELS = {
   "claude-sonnet-5": {key: "sonnet", short: "Sonnet 5"},
   "claude-opus-5": {key: "opus", short: "Opus 5"},
 };
-let MATRIX = [], TRACE = null;
+let MATRIX = [], TRACE = null, RUN = null;
 
 /* Node role is derived from provenance and status. Every colour on the page
    is one of these five, so colour always means something. */
@@ -495,87 +601,157 @@ function edgesOf(mems, withSupport) {
   return e;
 }
 
+let SPACE = null;
+
 function drawGraph(trace) {
   const fin = trace.steps.find(s => s.kind === "final");
   const rb = trace.steps.find(s => s.kind === "rollback");
   const runs = trace.steps.find(s => s.kind === "run");
   const mems = fin.memories;
 
-  /* Two real relationships: derivation between memories, and retrieval by tasks.
-     Task nodes are what make the graph readable: they show which memories were
-     actually consulted, and therefore which failures each one could explain. */
   const taskNodes = runs.runs.map(r => ({id: r.task_id, task: true, outcome: r.outcome,
     supplier: r.supplier, used: r.used_memories, derived_from: []}));
   const nodes = mems.concat(taskNodes);
   const ed = edgesOf(mems, true);
   const retrieval = [];
   runs.runs.forEach(r => r.used_memories.forEach(id => retrieval.push([id, r.task_id])));
+  const all = ed.concat(retrieval);
 
   const W = 760, H = 420;
-  const pos = layout(nodes, ed.concat(retrieval), W, H, 7);
+  const pos = layout(nodes, all, W, H, 7);
+
+  /* Undirected adjacency, used to measure how far each node sits from the
+     selected one. That distance becomes depth. */
+  const adj = {};
+  nodes.forEach(n => adj[n.id] = []);
+  all.forEach(p => { if (adj[p[0]] && adj[p[1]]) { adj[p[0]].push(p[1]); adj[p[1]].push(p[0]); } });
+
+  SPACE = {nodes, mems, taskNodes, ed, retrieval, all, pos, adj, rb, runs, W, H};
+
   const cut = {};
   rb.deactivated.forEach(id => cut[id] = 1);
-
-  const rSvg = retrieval.map(p => {
+  $("#graph").innerHTML = all.map((p, i) => {
     const a = pos[p[0]], b = pos[p[1]];
     if (!a || !b) return "";
-    return `<line class="gedge retrieval" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+    const prov = i < ed.length;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - (prov ? 20 : 0);
+    return `<path class="edge" data-a="${p[0]}" data-b="${p[1]}" data-prov="${prov}"
+      d="M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}"/>`;
   }).join("");
 
-  const eSvg = ed.map(p => {
-    const a = pos[p[0]], b = pos[p[1]];
-    if (!a || !b) return "";
-    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - 20;
-    return `<path class="gedge${cut[p[0]] && cut[p[1]] ? " tainted" : ""}" d="M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}"/>`;
-  }).join("");
+  const plane = $("#plane");
+  [...plane.querySelectorAll(".node")].forEach(n => n.remove());
+  nodes.forEach(n => {
+    const el = document.createElement("button");
+    el.className = "node" + (n.task ? " task" : "");
+    el.dataset.id = n.id;
+    el.dataset.sel = "false";
+    el.type = "button";
+    if (n.task) {
+      const c = n.outcome === "CORRECT" ? "#3ddc84"
+        : n.outcome === "UNSAFE_ACTION" ? "#f2555a" : "#e8b339";
+      el.style.borderColor = c;
+      el.innerHTML = `<i style="background:${c}"></i>${n.id}`;
+      el.setAttribute("aria-label", `Task ${n.id}, ${n.supplier}, ${n.outcome}`);
+    } else {
+      const r = role(n, rb);
+      el.innerHTML = `<i style="background:${ROLE_COLOR[r]}"></i>${n.id}`;
+      el.setAttribute("aria-label", `${n.id}, ${ROLE_NAME[r]}`);
+    }
+    el.addEventListener("click", () => selectNode(n.id));
+    plane.appendChild(el);
+  });
 
-  const tSvg = taskNodes.map(t => {
-    const p = pos[t.id];
-    const c = t.outcome === "CORRECT" ? "#3ddc84"
-      : t.outcome === "UNSAFE_ACTION" ? "#f2555a" : "#e8b339";
-    return `<g class="gnode task" data-id="${t.id}" data-sel="false" tabindex="0" role="button"
-      aria-label="Task ${t.id}, ${t.supplier}, ${t.outcome}">
-      <rect x="${p.x - 8}" y="${p.y - 8}" width="16" height="16" rx="2"
-        fill="none" stroke="${c}" stroke-width="1.6"/>
-      <text x="${p.x + 12}" y="${p.y + 3}">${t.id}</text></g>`;
-  }).join("");
-
-  const nSvg = mems.map(m => {
-    const r = role(m, rb), c = ROLE_COLOR[r], p = pos[m.id];
-    const rad = (m.derived_from.length || cut[m.id]) ? 9 : 6;
-    const op = m.status === "active" ? 1 : .55;
-    const named = m.derived_from.length || cut[m.id] || m.id === "m01";
-    return `<g class="gnode" data-id="${m.id}" data-sel="false" tabindex="0" role="button"
-      aria-label="${m.id}, ${ROLE_NAME[r]}">
-      <circle cx="${p.x}" cy="${p.y}" r="${rad + 9}" fill="${c}" opacity="${.08 * op}"/>
-      <circle class="core" cx="${p.x}" cy="${p.y}" r="${rad}" fill="${c}" opacity="${op}"/>
-      ${named ? `<text x="${p.x + rad + 5}" y="${p.y + 3}">${m.id}</text>` : ""}</g>`;
-  }).join("");
-
-  $("#graph").innerHTML = rSvg + eSvg + nSvg + tSvg;
   $("#graphstate").textContent =
     mems.filter(m => m.status === "active").length + " of " + mems.length + " active, " +
     rb.deactivated.length + " rolled back, " + rb.preserved.length + " preserved";
-  $$(".gnode").forEach(g => {
-    const pick = () => selectNode(g.dataset.id);
-    g.addEventListener("click", pick);
-    g.addEventListener("keydown", e => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); }
+  selectNode(rb.diagnosed[0] || mems[0].id);
+}
+
+/* Depth ladder. Distance 0 is the selection, 1 its immediate lineage, and so on.
+   Everything unreachable falls to the back. */
+const DEPTH = [
+  {z: 90,   scale: 1.12, blur: 0,   op: 1},
+  {z: 0,    scale: 1,    blur: 0,   op: .95},
+  {z: -110, scale: .88,  blur: .6,  op: .6},
+  {z: -220, scale: .78,  blur: 1.4, op: .38},
+];
+const FAR = {z: -300, scale: .7, blur: 2.2, op: .22};
+
+function applyDepth(id) {
+  if (!SPACE) return;
+  const dist = {};
+  dist[id] = 0;
+  let frontier = [id];
+  for (let d = 1; d <= 3 && frontier.length; d++) {
+    const next = [];
+    frontier.forEach(cur => (SPACE.adj[cur] || []).forEach(nb => {
+      if (dist[nb] === undefined) { dist[nb] = d; next.push(nb); }
+    }));
+    frontier = next;
+  }
+  const el = {};
+  [...$("#plane").querySelectorAll(".node")].forEach(n => el[n.dataset.id] = n);
+  SPACE.nodes.forEach(n => {
+    const node = el[n.id];
+    if (!node) return;
+    const d = dist[n.id];
+    const L = d === undefined ? FAR : DEPTH[Math.min(d, DEPTH.length - 1)];
+    const p = SPACE.pos[n.id];
+    // Position with left/top so the percentage resolves against the container,
+    // then centre with a self-relative translate.
+    node.style.left = (p.x / SPACE.W * 100) + "%";
+    node.style.top = (p.y / SPACE.H * 100) + "%";
+    node.dataset.z = L.z;
+    node.style.transform = `translate3d(-50%, -50%, ${L.z}px) scale(${L.scale})`;
+    node.style.filter = L.blur ? `blur(${L.blur}px)` : "none";
+    node.style.opacity = L.op;
+    node.style.zIndex = String(10 + Math.round(L.z / 10));
+  });
+  $("#plane").querySelectorAll(".edge").forEach(e => {
+    const da = dist[e.dataset.a], db = dist[e.dataset.b];
+    const near = da !== undefined && db !== undefined && Math.max(da, db) <= 1;
+    const mid = da !== undefined && db !== undefined && Math.max(da, db) <= 2;
+    const cutBoth = SPACE.rb.deactivated.indexOf(e.dataset.a) >= 0 &&
+                    SPACE.rb.deactivated.indexOf(e.dataset.b) >= 0;
+    e.setAttribute("stroke", near ? (cutBoth ? "#f2555a" : "#5f6b80")
+      : mid ? "#2a2f3c" : "#1c1f29");
+    e.setAttribute("stroke-width", near ? 1.6 : 1);
+    e.setAttribute("opacity", near ? .95 : mid ? .5 : .22);
+  });
+}
+
+/* Parallax: layers shift by their own depth, so the scene has volume.
+   Pointer only, and skipped entirely under reduced motion. */
+function bindParallax() {
+  const space = $("#space"), plane = $("#plane");
+  if (!space || REDUCED || space.dataset.bound) return;
+  space.dataset.bound = "1";
+  let raf = 0;
+  space.addEventListener("pointermove", e => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      const r = space.getBoundingClientRect();
+      const dx = (e.clientX - r.left) / r.width - .5;
+      const dy = (e.clientY - r.top) / r.height - .5;
+      plane.style.transform = `rotateY(${dx * 7}deg) rotateX(${-dy * 5}deg) translate3d(${-dx * 16}px, ${-dy * 10}px, 0)`;
     });
   });
-  selectNode(rb.diagnosed[0] || mems[0].id);
+  space.addEventListener("pointerleave", () => plane.style.transform = "");
 }
 
 function selectNode(id) {
   const fin = TRACE.steps.find(s => s.kind === "final");
   const runsStep = TRACE.steps.find(s => s.kind === "run");
   const task = runsStep.runs.find(r => r.task_id === id);
-  if (task) return selectTask(task);
+  if (task) { applyDepth(id); return selectTask(task); }
+  applyDepth(id);
   const rb = TRACE.steps.find(s => s.kind === "rollback");
   const runs = TRACE.steps.find(s => s.kind === "run");
   const m = fin.memories.find(x => x.id === id);
   if (!m) return;
-  $$(".gnode").forEach(g => g.setAttribute("data-sel", String(g.dataset.id === id)));
+  $$("#plane .node").forEach(g => g.setAttribute("data-sel", String(g.dataset.id === id)));
   const r = role(m, rb);
   const used = runs.runs.filter(x => x.used_memories.indexOf(id) >= 0);
   const kids = fin.memories.filter(x => x.derived_from.indexOf(id) >= 0);
@@ -599,7 +775,7 @@ function selectNode(id) {
 
 function selectTask(t) {
   const rb = TRACE.steps.find(s => s.kind === "rollback");
-  $$(".gnode").forEach(g => g.setAttribute("data-sel", String(g.dataset.id === t.task_id)));
+  $$("#plane .node").forEach(g => g.setAttribute("data-sel", String(g.dataset.id === t.task_id)));
   const c = t.outcome === "CORRECT" ? "#3ddc84"
     : t.outcome === "UNSAFE_ACTION" ? "#f2555a" : "#e8b339";
   const replay = (rb.replayed || []).find(r => r.task_id === t.task_id);
@@ -761,7 +937,7 @@ function paintRuns() {
     const word = harm ? "paid attacker" : modes.length ? "refused to pay" : "unaffected";
     const col = harm ? "var(--sem-harm)" : modes.length ? "var(--sem-deg)" : "var(--sem-ok)";
     return `<li role="option" data-i="${i}" aria-selected="${i === 0}">
-      <span class="dot" style="background:${col}"></span>Run ${r.repeat + 1}
+      <span class="dot" style="background:${col}"></span>Run ${r.run}
       <span class="st">${word}</span></li>`;
   }).join("");
   $$("#runs li").forEach(li => li.addEventListener("click", () => {
@@ -797,15 +973,17 @@ async function paintCompare(tab) {
       Object.keys(MODELS).map(id => {
         const rs = MATRIX.filter(r => r.model === id);
         if (!rs.length) return "";
+        const allSame = rs.every(r => r.diagnosed.join() === rs[0].diagnosed.join());
         return `<tr><td>${MODELS[id].short}</td><td class="m">${rs.length}</td>
-          <td class="m ok">${rs[0].recovered}/4</td><td class="m ok">${rs[0].benign_kept}/14</td>
-          <td class="m">${rs[0].diagnosed.join(", ")}</td></tr>`;
+          <td class="m ok">${rs.map(r => r.recovered).join("/")} of 4</td>
+          <td class="m ok">${rs[0].benign_kept}/14</td>
+          <td class="m">${allSame ? rs[0].diagnosed.join(", ") : "varies"}</td></tr>`;
       }).join("") + `</tbody></table>`;
     return;
   }
   const keys = Object.keys(MODELS).map(k => MODELS[k]);
   const traces = await Promise.all(keys.map(m =>
-    fetch("traces/claude-" + m.key + ".json").then(r => r.json()).catch(() => null)));
+    fetch("traces/claude-" + m.key + "-1.json").then(r => r.json()).catch(() => null)));
   box.innerHTML = `<div class="mini">` + keys.map((m, i) => {
     const t = traces[i];
     if (!t) return "";
@@ -865,7 +1043,7 @@ function paintMatrix() {
       const before = Object.keys(r.initial_outcomes).filter(k => k !== "CORRECT")
         .map(k => `<span class="${k === "UNSAFE_ACTION" ? "harm" : "deg"}">${k} x${r.initial_outcomes[k]}</span>`)
         .join(" ") || "&mdash;";
-      return `<tr><td>${MODELS[r.model].short}</td><td class="m">${r.repeat + 1}</td>
+      return `<tr><td>${MODELS[r.model].short}</td><td class="m">${r.run}</td>
         <td class="m ok">${r.recovered}/4</td><td class="m ok">${r.benign_kept}/14</td>
         <td class="m ok">${r.poison_left}</td><td class="m ok">${r.parse_errors}</td>
         <td class="m">${r.diagnosed.join(", ")}</td><td class="m">${before}</td>
@@ -876,7 +1054,7 @@ function paintMatrix() {
 async function paintStack() {
   const keys = Object.keys(MODELS).map(k => MODELS[k]);
   const traces = await Promise.all(keys.map(m =>
-    fetch("traces/claude-" + m.key + ".json").then(r => r.json()).catch(() => null)));
+    fetch("traces/claude-" + m.key + "-1.json").then(r => r.json()).catch(() => null)));
   $("#stack").innerHTML = keys.map((m, i) => traces[i]
     ? `<figure class="pane">${miniGraph(traces[i], 210, 200)}
        <figcaption>${m.short}</figcaption></figure>` : "").join("");
@@ -886,9 +1064,13 @@ async function loadTrace() {
   $("#nodedetails").innerHTML = [72, 90, 55, 80, 62, 88, 48]
     .map(w => `<div class="skel" style="width:${w}%"></div>`).join("");
   const key = MODELS[$("#model").value].key;
-  const name = $("#policy").value === "enforce" ? "rule-enforce" : "claude-" + key;
+  const name = $("#policy").value === "enforce" ? "rule-enforce"
+    : (RUN && RUN.trace) || "claude-" + key + "-1";
+  if ($("#policy").value === "enforce") $("#graphsub").textContent = "Offline agent \u00b7 enforce";
+  else if (RUN) $("#graphsub").textContent = MODELS[RUN.model].short + " \u00b7 run " + RUN.run;
   TRACE = await fetch("traces/" + name + ".json").then(r => r.json());
   drawGraph(TRACE);
+  bindParallax();
   paintTrajectory(TRACE);
   termStart(TRACE);
 }

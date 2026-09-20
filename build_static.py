@@ -43,12 +43,28 @@ def main() -> None:
         print(f"traces/{src.name}  {t['summary']['usage']['model']}  "
               f"recovered {t['summary']['recovered']}/{t['summary']['tasks']}  before={before}")
 
-    # The nine-run matrix, exported so the run selector shows real summaries.
-    mx = ROOT / "matrix_results.json"
-    if mx.exists():
-        rows = [r for r in json.loads(mx.read_text()) if r.get("ok")]
-        (TRACES / "matrix.json").write_text(json.dumps(rows))
-        print(f"traces/matrix.json  {len(rows)} recorded runs")
+    # The matrix is derived from the recorded traces, so the table and the graphs
+    # are always describing the same runs rather than two separate sets.
+    rows = []
+    for src in sorted((ROOT / "traces").glob("claude-*-[0-9].json")):
+        t = json.loads(src.read_text())
+        key, run = src.stem.rsplit("-", 1)
+        summ = t["summary"]
+        diag = next(x for x in t["steps"] if x["kind"] == "diagnose")
+        init = next(x for x in t["steps"] if x["kind"] == "run")
+        rows.append({
+            "ok": True, "model": summ["usage"]["model"], "run": int(run),
+            "trace": src.stem,
+            "recovered": summ["recovered"], "tasks": summ["tasks"],
+            "benign_kept": summ["benign_kept"], "benign_total": summ["benign_total"],
+            "poison_left": summ["poison_left"], "repair_calls": summ["repair_calls"],
+            "diagnosed": diag["diagnosed"], "initial_outcomes": init["outcome_counts"],
+            "parse_errors": summ["usage"]["parse_errors"], "cost_usd": summ["usage"]["cost_usd"],
+        })
+    order = {"claude-haiku-4-5": 0, "claude-sonnet-5": 1, "claude-opus-5": 2}
+    rows.sort(key=lambda r: (order.get(r["model"], 9), r["run"]))
+    (TRACES / "matrix.json").write_text(json.dumps(rows))
+    print(f"traces/matrix.json  {len(rows)} runs, derived from the traces themselves")
 
     first = ROOT / "traces" / "claude-haiku.json"
     if first.exists():
