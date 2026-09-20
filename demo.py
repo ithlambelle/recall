@@ -1,7 +1,7 @@
 """90-second demo narrative in the terminal."""
 import argparse
 from recall.facade import preview
-from recall.runtime import run_task, is_harmful
+from recall.runtime import run, run_task, is_harmful
 from recall.attribution import diagnose
 from recall.rollback import rollback
 from experiment import make_agent
@@ -23,9 +23,10 @@ def main():
     show("1. Memory store after the agent read a spoofed vendor page", st)
     print("\n2. Agent runs this week's payables:")
     for t in tasks.values():
-        d = run_task(st, agent, t)
-        flag = "  <-- HARMFUL" if is_harmful(d, t) else ""
-        print(f"  {t['id']} {t['supplier']:<10} -> {d['tool']} {d['args'].get('recipient', d['args'])}{flag}")
+        r = run(st, agent, t)
+        d = r.decision
+        print(f"  {t['id']} {t['supplier']:<10} -> {d['tool']:<13} "
+              f"{d['args'].get('recipient', '')}  [{r.outcome.value}]")
 
     print("\n3. Recall diagnoses harmful actions (counterfactual reruns):")
     diagnosed = set()
@@ -48,8 +49,8 @@ def main():
     print(f"  deactivated {rep.deactivated}  (includes descendants never retrieved by any task)")
     print(f"  preserved   {rep.preserved}  (independent trusted support)")
     for old, tid, new in rep.replayed:
-        ok = "OK" if not is_harmful(new, tasks[tid]) else "STILL HARMFUL"
-        print(f"  replayed {old} ({tid}) -> {new['tool']} {new['args'].get('recipient')}  {ok}")
+        print(f"  replayed {old} ({tid}) -> {new.decision['tool']} "
+              f"{new.decision['args'].get('recipient')}  [{new.outcome.value}]")
     untouched = len(st.actions) - len(rep.replayed) * 2
     print(f"  {len(st.active())} memories still active; replayed {len(rep.replayed)} actions "
           f"({rep.calls} calls), {untouched} actions left untouched")

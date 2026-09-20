@@ -8,7 +8,7 @@ replay only the actions that consumed deactivated memories.
 from __future__ import annotations
 from dataclasses import dataclass, field
 from .models import Status
-from .runtime import run_task, is_harmful
+from .runtime import run
 
 
 @dataclass
@@ -16,7 +16,7 @@ class RollbackReport:
     diagnosed: list[str]
     deactivated: list[str] = field(default_factory=list)
     preserved: list[str] = field(default_factory=list)
-    replayed: list[tuple[str, str, dict]] = field(default_factory=list)  # (old action, task, new decision)
+    replayed: list[tuple[str, str, object]] = field(default_factory=list)  # (old action, task, TaskRun)
     calls: int = 0
 
 
@@ -47,8 +47,8 @@ def rollback(store, agent, diagnosed: set[str], tasks: dict[str, dict], trust_fl
     start = agent.calls
     for a in list(store.actions):
         if a.superseded_by is None and dead & set(a.used_memories):
-            new = run_task(store, agent, tasks[a.task_id])
-            a.superseded_by = store.actions[-1].id
+            new = run(store, agent, tasks[a.task_id])
+            a.superseded_by = new.action_id
             rep.replayed.append((a.id, a.task_id, new))
     rep.calls = agent.calls - start
     return rep

@@ -4,7 +4,8 @@ import argparse
 from recall import env
 from recall.models import Status, Source
 from recall.agents import RuleAgent
-from recall.runtime import run_task, is_harmful, is_correct
+from recall.outcomes import Outcome
+from recall.runtime import run, run_task, is_harmful, is_correct
 from recall.attribution import diagnose
 from recall.rollback import rollback
 import scenario
@@ -19,8 +20,12 @@ def make_agent(kind):
 
 
 def evaluate(st, agent, tasks):
-    res = [run_task(st, agent, t, record=False) for t in tasks.values()]
+    runs = [run(st, agent, t, record=False) for t in tasks.values()]
+    res = [r.decision for r in runs]
     tl = list(tasks.values())
+    counts = {}
+    for r in runs:
+        counts[r.outcome.value] = counts.get(r.outcome.value, 0) + 1
     active = {m.id for m in st.active()}
     benign = {m.id for m in st.all()} - scenario.POISON_IDS
     return {
@@ -28,6 +33,7 @@ def evaluate(st, agent, tasks):
         "harmful": sum(is_harmful(r, t) for r, t in zip(res, tl)),
         "benign_kept": len(benign & active), "benign_total": len(benign),
         "poison_left": len(scenario.POISON_IDS & active),
+        "outcomes": counts,
     }
 
 
@@ -67,7 +73,8 @@ def main():
     strategies = {"delete source only": strategy_delete_source, "full reset": strategy_reset,
                   "Recall (prior)": lambda s, a, t: strategy_recall(s, a, t, True),
                   "Recall (no prior)": lambda s, a, t: strategy_recall(s, a, t, False)}
-    print(f"{'strategy':<20}{'recovered':>11}{'harmful':>9}{'benign kept':>13}{'poison left':>13}{'repair calls':>14}")
+    print(f"{'strategy':<20}{'recovered':>11}{'harmful':>9}{'benign kept':>13}"
+          f"{'poison left':>13}{'repair calls':>14}   outcomes")
     for name, fn in strategies.items():
         st, agent = scenario.build(), make_agent(args.agent)
         for t in scenario.TASKS.values():
@@ -75,8 +82,9 @@ def main():
         calls = fn(st, agent, scenario.TASKS)
         r = evaluate(st, agent, scenario.TASKS)
         n = len(scenario.TASKS)
+        oc = " ".join(f"{k}={v}" for k, v in sorted(r["outcomes"].items()))
         print(f"{name:<20}{r['recovered']:>8}/{n}{r['harmful']:>9}"
-              f"{r['benign_kept']:>9}/{r['benign_total']}{r['poison_left']:>13}{calls:>14}")
+              f"{r['benign_kept']:>9}/{r['benign_total']}{r['poison_left']:>13}{calls:>14}   {oc}")
 
 
 if __name__ == "__main__":

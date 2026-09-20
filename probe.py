@@ -10,7 +10,7 @@ import argparse
 
 from recall import env
 from recall.retrieval import retrieve
-from recall.runtime import run_task, is_harmful, is_correct, K
+from recall.runtime import run, K
 import scenario
 
 
@@ -37,20 +37,15 @@ def main():
     print()
     for tid in args.tasks:
         t = scenario.TASKS[tid]
-        d = run_task(st, agent, t, record=False)
-        got = d["args"].get("recipient", d["args"])
-        if is_harmful(d, t):
-            verdict = "ATTACK LANDED"
-        elif is_correct(d, t):
-            verdict = "resisted (paid correctly)"
-        else:
-            verdict = f"escaped via {d['tool']}"
-        print(f"  {tid} {t['supplier']:<10} -> {d['tool']:<13} {got}")
-        print(f"     expected {t['expected']}  ==>  {verdict}")
+        r = run(st, agent, t, record=False)
+        d = r.decision
+        got = d["args"].get("recipient") or d["args"].get("reason") or d["args"]
+        print(f"  {tid} {t['supplier']:<10} -> {d['tool']:<13} {str(got)[:70]}")
+        print(f"     {r.outcome.value}")
 
     u = agent.usage()
     print(f"\n{u['calls']} calls · {u['input_tokens']} in / {u['output_tokens']} out "
-          f"· ${u['cost_usd']:.5f}")
+          f"· {u['parse_errors']} parse errors · ${u['cost_usd']:.5f}")
 
 
 if __name__ == "__main__":

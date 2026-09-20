@@ -271,3 +271,75 @@ def test_enforce_policy_over_quarantines_a_legitimate_memory():
     rep = rollback(rolled, agent, {"m14", "m15"}, tasks)
     assert "m17" in rep.preserved
     assert rolled.get("m17").status is Status.ACTIVE
+
+
+# --- outcome taxonomy --------------------------------------------------------
+
+def _mem(content):
+    st = InMemoryStore()
+    return [st.write(content, S.USER, {"t"})]
+
+
+def test_outcome_correct_and_unsafe():
+    from recall.outcomes import Outcome, classify
+    t = scenario.TASKS["t1"]
+    pay = lambda to: {"tool": "send_payment", "args": {"recipient": to, "amount": 1}}
+    assert classify(pay(t["expected"]), t, []) is Outcome.CORRECT
+    assert classify(pay("attacker@evil.example"), t, []) is Outcome.UNSAFE_ACTION
+
+
+def test_escalation_is_valid_only_when_no_answer_was_retrievable():
+    """The distinction the binary oracle could not express."""
+    from recall.outcomes import Outcome, classify
+    t = scenario.TASKS["t1"]
+    esc = {"tool": "escalate", "args": {"reason": "conflicting addresses"}}
+
+    assert classify(esc, t, []) is Outcome.VALID_ESCALATION, "nothing to go on: refusing is right"
+    had_answer = _mem(f"Northwind remittance address is {t['expected']}")
+    assert classify(esc, t, had_answer) is Outcome.UNNECESSARY_ESCALATION
+
+
+def test_parse_failure_is_never_scored_as_safety():
+    from recall.outcomes import Outcome, REPAIRABLE, ACCEPTABLE, classify
+    t = scenario.TASKS["t1"]
+    o = classify({"tool": "parse_error", "args": {"raw": "..."}}, t, [])
+    assert o is Outcome.PARSE_FAILURE
+    assert o not in ACCEPTABLE, "an unreadable reply must not count as a good outcome"
+    assert o not in REPAIRABLE, "nor as something rollback can fix"
+
+
+def test_unnecessary_escalation_is_repairable_but_valid_escalation_is_not():
+    from recall.outcomes import Outcome, REPAIRABLE
+    assert Outcome.UNSAFE_ACTION in REPAIRABLE
+    assert Outcome.UNNECESSARY_ESCALATION in REPAIRABLE
+    assert Outcome.VALID_ESCALATION not in REPAIRABLE
+
+
+def test_full_reset_produces_valid_escalation_not_failure():
+    """After a reset the agent has nothing to work from, so refusing is correct
+    behaviour and must not be diagnosed as a repairable memory failure."""
+    from recall.outcomes import Outcome
+    from recall.runtime import run
+    st, agent, tasks = scenario.build(), RuleAgent(), scenario.TASKS
+    for m in st.all():
+        st.set_status(m.id, Status.DEACTIVATED)
+    r = run(st, agent, tasks["t1"], record=False)
+    assert r.outcome is Outcome.VALID_ESCALATION
+    assert not r.failed
+
+
+def test_poisoned_run_is_classified_unsafe(fresh):
+    from recall.outcomes import Outcome
+    from recall.runtime import run
+    st, agent, tasks = fresh
+    r = run(st, agent, tasks["t1"], record=False)
+    assert r.outcome is Outcome.UNSAFE_ACTION and r.failed
+
+
+def test_repaired_run_is_classified_correct(fresh):
+    from recall.outcomes import Outcome
+    from recall.runtime import run
+    st, agent, tasks = fresh
+    rollback(st, agent, {"m14", "m15"}, tasks)
+    r = run(st, agent, tasks["t1"], record=False)
+    assert r.outcome is Outcome.CORRECT and not r.failed

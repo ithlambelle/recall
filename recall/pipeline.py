@@ -9,8 +9,16 @@ from __future__ import annotations
 import scenario
 from .attribution import diagnose
 from .rollback import rollback
-from .runtime import run_task, is_harmful, is_correct
+from .outcomes import Outcome
+from .runtime import run, run_task, is_harmful, is_correct
 from .serialize import memory_dict, action_dict, store_dict
+
+
+def _counts(values) -> dict:
+    out: dict[str, int] = {}
+    for v in values:
+        out[v] = out.get(v, 0) + 1
+    return out
 
 
 def _decision_dict(d: dict) -> dict:
@@ -37,8 +45,10 @@ def run_pipeline(agent, policy_mode: str = "permissive", use_provenance_prior: b
     # 1. The agent runs this week's payables with memory as it stands.
     runs = []
     for t in tasks.values():
-        d = run_task(store, agent, t)
+        r = run(store, agent, t)
+        d = r.decision
         runs.append({
+            "outcome": r.outcome.value,
             "task_id": t["id"],
             "supplier": t["supplier"],
             "amount": t["amount"],
@@ -47,14 +57,17 @@ def run_pipeline(agent, policy_mode: str = "permissive", use_provenance_prior: b
             "decision": _decision_dict(d),
             "harmful": is_harmful(d, t),
             "correct": is_correct(d, t),
-            "used_memories": list(store.actions[-1].used_memories),
-            "action_id": store.actions[-1].id,
+            "used_memories": [m.id for m in r.retrieved],
+            "action_id": r.action_id,
         })
     steps.append({
         "kind": "run",
         "title": "Agent executes the payables queue",
         "runs": runs,
         "harmful_count": sum(r["harmful"] for r in runs),
+        "failed_count": sum(r["outcome"] in ("UNSAFE_ACTION", "UNNECESSARY_ESCALATION")
+                            for r in runs),
+        "outcome_counts": _counts(r["outcome"] for r in runs),
     })
 
     # 2. Counterfactual diagnosis on every task, harmful or not.
@@ -68,6 +81,7 @@ def run_pipeline(agent, policy_mode: str = "permissive", use_provenance_prior: b
         diagnoses.append({
             "task_id": dg.task_id,
             "harmful": dg.harmful,
+            "outcome": dg.outcome,
             "loo": dg.loo,
             "single_cause_found": any(dg.loo.values()),
             "method": dg.method,
@@ -105,9 +119,10 @@ def run_pipeline(agent, policy_mode: str = "permissive", use_provenance_prior: b
                 {
                     "old_action": old,
                     "task_id": tid,
-                    "decision": _decision_dict(new),
-                    "repaired": is_correct(new, tasks[tid]),
-                    "still_harmful": is_harmful(new, tasks[tid]),
+                    "decision": _decision_dict(new.decision),
+                    "outcome": new.outcome.value,
+                    "repaired": new.outcome is Outcome.CORRECT,
+                    "still_harmful": new.outcome is Outcome.UNSAFE_ACTION,
                 }
                 for old, tid, new in rep.replayed
             ],
@@ -115,7 +130,8 @@ def run_pipeline(agent, policy_mode: str = "permissive", use_provenance_prior: b
     steps.append(rollback_step)
 
     # 4. Final state, re-evaluated from scratch.
-    final = [run_task(store, agent, t, record=False) for t in tasks.values()]
+    final_runs = [run(store, agent, t, record=False) for t in tasks.values()]
+    final = [fr.decision for fr in final_runs]
     tl = list(tasks.values())
     active = {m.id for m in store.active()}
     benign = {m.id for m in store.all()} - scenario.POISON_IDS
@@ -128,7 +144,10 @@ def run_pipeline(agent, policy_mode: str = "permissive", use_provenance_prior: b
         "poison_left": len(scenario.POISON_IDS & active),
         "repair_calls": audit_calls + rollback_step["calls"],
         "agent_calls_total": agent.calls,
+        "outcome_counts": _counts(fr.outcome.value for fr in final_runs),
     }
+    if hasattr(agent, "usage"):
+        summary["usage"] = agent.usage()
     steps.append({
         "kind": "final",
         "title": "Memory after repair",
