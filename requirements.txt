@@ -1,2 +1,4 @@
-anthropic>=0.40   # only needed for --agent claude
-requests>=2.31    # only needed for posting frames to the facade
+fastapi>=0.115
+uvicorn[standard]>=0.30
+anthropic>=0.40    # only needed for --agent claude
+requests>=2.31     # only needed for posting frames to the facade

@@ -1,6 +1,7 @@
 """Compare repair strategies after poisoning: delete-source-only, full reset, Recall.
 Metrics: task recovery, benign memories preserved, poison remaining, repair LLM calls."""
 import argparse
+from recall import env
 from recall.models import Status, Source
 from recall.agents import RuleAgent
 from recall.runtime import run_task, is_harmful, is_correct
@@ -11,6 +12,7 @@ import scenario
 
 def make_agent(kind):
     if kind == "claude":
+        env.load()
         from recall.agents import ClaudeAgent
         return ClaudeAgent()
     return RuleAgent()

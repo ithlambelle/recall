@@ -15,8 +15,11 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from recall import env
 from recall.agents import RuleAgent
 from recall.pipeline import run_pipeline
+
+env.load()
 
 ROOT = pathlib.Path(__file__).parent
 STATIC = ROOT / "static"
