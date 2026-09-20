@@ -1,0 +1,2 @@
+anthropic>=0.40   # only needed for --agent claude
+requests>=2.31    # only needed for posting frames to the facade
