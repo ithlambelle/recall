@@ -96,6 +96,31 @@
   .seg button{border:0;border-radius:0;padding:8px 14px;background:var(--panel)}
   .seg button.on{background:var(--ink);color:#0c0d10}
   footer{color:var(--dim);font-size:12px;margin-top:28px;line-height:1.7}
+  /* --- explainer ---------------------------------------------------------- */
+  .lede{font-size:16.5px;line-height:1.7;color:#d6d8df;max-width:74ch}
+  .lede b{color:#fff}
+  .story{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px;margin-top:18px}
+  .beat{border:1px solid var(--line);border-radius:10px;padding:13px 15px;background:#101116;
+    border-top:2px solid var(--line)}
+  .beat.b1{border-top-color:var(--web)} .beat.b2{border-top-color:var(--derived)}
+  .beat.b3{border-top-color:var(--warn)} .beat.b4{border-top-color:var(--ok)}
+  .beat h4{margin:0 0 6px;font-size:13px;letter-spacing:-.01em}
+  .beat p{margin:0;font-size:13px;color:var(--dim);line-height:1.6}
+  .beat .n{font-family:var(--mono);font-size:10px;color:var(--dim);display:block;margin-bottom:5px}
+  .papers{display:grid;gap:10px;margin-top:6px}
+  .paper{border:1px solid var(--line);border-left:3px solid var(--tool);border-radius:8px;
+    padding:12px 15px;background:#101116}
+  .paper h4{margin:0 0 3px;font-size:14px}
+  .paper h4 a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+  .paper h4 a:hover{border-bottom-color:var(--tool);color:#fff}
+  .paper .arx{font-family:var(--mono);font-size:11px;color:var(--tool)}
+  .paper p{margin:6px 0 0;font-size:13px;color:var(--dim);line-height:1.6}
+  .paper .use{margin-top:7px;font-size:12.5px;color:#c8cad2;
+    border-left:2px solid var(--line);padding-left:10px}
+  .paper .use b{color:var(--ok)}
+  .gap{border-left-color:var(--warn)}
+  table.bench td.good{color:var(--ok)} table.bench td.bad{color:var(--bad)}
+  table.bench td.mid{color:var(--warn)}
   code{font-family:var(--mono);font-size:.92em;background:#1b1d23;padding:1px 5px;border-radius:4px}
 </style>
 </head>
@@ -103,10 +128,8 @@
 <div class="wrap">
   <header>
     <h1>Recall <span>— causal diagnosis and dependency-guided rollback for agent memory</span></h1>
-    <p class="sub">An agent read a spoofed vendor page and wrote it to memory, then summarised it
-      into a &ldquo;supplier profile&rdquo;. Deleting the page it read is not enough. Recall finds which
-      memories actually caused the harm, traces everything derived from them, rolls back only that
-      branch, and replays only the affected actions.</p>
+    <p class="sub">Find the memories that actually caused an agent's harmful action, roll back
+      everything derived from them, and replay only what that touched.</p>
     <div class="controls">
       <select id="agent">
         <option value="rule">Agent: offline stand-in (deterministic)</option>
@@ -125,6 +148,124 @@
       <span class="status" id="status"></span>
     </div>
   </header>
+  <section>
+    <h2>What this is</h2>
+    <h3>An agent believed a lie, and deleting the lie isn't enough</h3>
+    <p class="lede">AI agents are starting to keep <b>persistent memory</b> &mdash; notes they
+      write to themselves and read back later. That memory is mostly invisible. You can't see what
+      was written, where it came from, or how to undo it. So if something false gets in, it stays
+      in, and it quietly shapes every decision the agent makes afterwards.</p>
+    <div class="story">
+      <div class="beat b1"><span class="n">1 &middot; THE LIE GETS IN</span>
+        <h4>The agent reads a fake page</h4>
+        <p>A bookkeeping agent pays invoices. It reads a web page claiming a supplier changed
+          bank details, and writes that down. The page is fake &mdash; this is ordinary
+          invoice fraud, aimed at the agent instead of a person.</p></div>
+      <div class="beat b2"><span class="n">2 &middot; THE LIE SPREADS</span>
+        <h4>It gets tidied into a &ldquo;fact&rdquo;</h4>
+        <p>Later the agent summarises its notes into a clean supplier profile. The lie is now
+          restated in the agent's own words, and it looks like something the agent worked out
+          rather than something it read off a web page.</p></div>
+      <div class="beat b3"><span class="n">3 &middot; CLEANUP FAILS</span>
+        <h4>Deleting the page doesn't help</h4>
+        <p>Delete the fake page and the summary still says the same thing, so the money still
+          goes to the attacker. Wipe all memory instead and the agent is safe but useless &mdash;
+          it no longer knows how to pay anyone.</p></div>
+      <div class="beat b4"><span class="n">4 &middot; WHAT RECALL DOES</span>
+        <h4>Cut the branch, keep the tree</h4>
+        <p>Recall re-runs the task with each memory withheld to find which ones actually caused
+          the payment, follows the trail to everything written from them, switches off just that
+          branch, and redoes only the payments that relied on it.</p></div>
+    </div>
+    <div class="callout"><b>The one idea.</b> Recall never tries to judge whether a memory
+      <i>looks</i> suspicious &mdash; a convincing lie beats that every time. It scores memories by
+      <b>where they came from</b>. You said it yourself: trusted. A web page said it: not trusted.
+      And anything the agent writes <i>from</i> an untrusted memory inherits that distrust, so a
+      lie cannot be laundered into a fact by being summarised.</div>
+  </section>
+
+  <section>
+    <h2>Prior work</h2>
+    <h3>Four papers, and the gap between two of them</h3>
+    <div class="papers">
+      <div class="paper"><h4><a href="https://arxiv.org/abs/2503.03704" target="_blank"
+        rel="noopener">MINJA &mdash; Memory Injection Attacks on LLM Agents via Query-Only Interaction</a></h4>
+        <span class="arx">arXiv:2503.03704</span>
+        <p>Shows an attacker can poison an agent's memory using nothing but ordinary queries
+          &mdash; no access to the database, no privileged position.</p>
+        <p class="use">Used as our <b>threat model</b>. The scenario here is a MINJA-style write:
+          the agent poisons itself by reading attacker-controlled content.</p></div>
+
+      <div class="paper"><h4><a href="https://arxiv.org/abs/2605.23723" target="_blank"
+        rel="noopener">MemAudit &mdash; Post-hoc Auditing of Poisoned Agent Memory via Causal Attribution and Structural Anomaly Detection</a></h4>
+        <span class="arx">arXiv:2605.23723</span>
+        <p>Audits agent memory after the fact by removing memories and re-running to see which
+          ones actually changed the outcome. Names mutually reinforcing poisoned memories as its
+          weak spot, and <b>ranks and removes</b> &mdash; it does not repair.</p>
+        <p class="use">We implement the <b>diagnosis</b> half, and hit exactly the weak spot the
+          paper names: see the leave-one-out sweep below return nothing.</p></div>
+
+      <div class="paper"><h4><a href="https://arxiv.org/abs/2608.10502" target="_blank"
+        rel="noopener">From Faulty Memories to Corrected Actions: Dependency-Guided Rollback Repair for Memory-Augmented Agents</a></h4>
+        <span class="arx">arXiv:2608.10502</span>
+        <p>Given a set of bad memories, walks a provenance graph to undo everything derived from
+          them and replay the affected actions. <b>Assumes the diagnosis is already given.</b></p>
+        <p class="use">We implement the <b>repair</b> half, including preserving derived memories
+          that have independent trusted support.</p></div>
+
+      <div class="paper"><h4><a href="https://arxiv.org/abs/2506.04202" target="_blank"
+        rel="noopener">TracLLM: A Generic Framework for Attributing Long Context LLMs</a></h4>
+        <span class="arx">arXiv:2506.04202</span>
+        <p>Leave-one-out and Shapley methods for attributing an LLM's output to pieces of its
+          context.</p>
+        <p class="use">Our leave-one-out <b>baseline</b> &mdash; the thing that provably fails here.</p></div>
+
+      <div class="paper gap"><h4>The gap</h4>
+        <p>MemAudit ends where diagnosis ends. The rollback paper begins after diagnosis is
+          handed to it. <b>Nobody joins them</b>, and we could not find a public implementation of
+          either. Recall is that join: diagnosis feeds repair, end to end, on one system.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What's new here</h2>
+    <h3>Contributions, and what they cost</h3>
+    <table class="bench">
+      <tr><th>Contribution</th><th>Why it matters</th></tr>
+      <tr><td><b>Chaining diagnosis to repair</b></td>
+        <td>Two papers, one pipeline. Diagnosis output becomes the rollback input, with no human
+          in between.</td></tr>
+      <tr><td><b>A fallback for reinforcing memories</b></td>
+        <td>Leave-one-out returns nothing when a lie and its summary each restate the other.
+          We fall back to cumulative removal ordered by provenance trust, then prune to a minimal
+          set. This is MemAudit's stated weak spot.</td></tr>
+      <tr><td><b>Provenance-scored writes with taint</b></td>
+        <td>Trust comes from source, never content, and derived memories inherit the minimum trust
+          of their parents. A convincing lie is scored the same as a clumsy one.</td></tr>
+      <tr><td><b>A five-way outcome taxonomy</b></td>
+        <td>Distinguishes a refusal that protected the user from one that just failed the task,
+          and never scores an unreadable reply as safety. Both distinctions changed our results.</td></tr>
+      <tr><td><b>Repair defined as task success</b></td>
+        <td>Requiring the outcome to be <i>correct</i>, not merely <i>not failing</i>, stops the
+          system from &ldquo;fixing&rdquo; things by deleting the memory holding the right answer.</td></tr>
+    </table>
+
+    <h3 style="margin-top:22px">Measured against the alternatives</h3>
+    <table class="bench">
+      <tr><th>Strategy</th><th>Tasks recovered</th><th>Benign memories kept</th>
+        <th>Poison left</th><th>What actually happens</th></tr>
+      <tr><td>Delete the source page</td><td class="mid">2/4</td><td class="good">14/14</td>
+        <td class="bad">2</td><td>The derived profile survives, so it still pays the attacker</td></tr>
+      <tr><td>Wipe all memory</td><td class="bad">0/4</td><td class="bad">0/14</td>
+        <td class="good">0</td><td>Safe only because the agent can no longer act at all</td></tr>
+      <tr><td><b>Recall</b></td><td class="good">4/4</td><td class="good">14/14</td>
+        <td class="good">0</td><td>Cuts the poisoned branch, keeps everything else</td></tr>
+    </table>
+    <p class="note">Full-reset scoring zero harm is exactly why the outcome taxonomy exists: by a
+      harm count alone it looks perfect. Verified across Haiku 4.5, Sonnet 5 and Opus 5 with
+      repeated runs &mdash; every model, every run, recovers the same two memories.</p>
+  </section>
+
   <section class="term" id="termwrap">
     <div class="term-bar">
       <i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>
@@ -496,6 +637,8 @@ async function call(path, body) {
     $("#run").disabled = $("#fb").disabled = false;
   }
 }
+
+$("#out").classList.add("hidden");   // Terminal is the default view on load
 
 $("#run").onclick = () => call("/api/run", {
   agent: $("#agent").value, policy: $("#policy").value, use_provenance_prior: true });
