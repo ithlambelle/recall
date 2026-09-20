@@ -87,6 +87,7 @@ def run_pipeline(agent, policy_mode: str = "permissive", use_provenance_prior: b
             "method": dg.method,
             "repair_set": list(dg.repair_set),
             "calls": dg.calls,
+            "probes": dg.probes,
         })
     steps.append({
         "kind": "diagnose",

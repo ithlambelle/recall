@@ -21,9 +21,12 @@ class Diagnosis:
     repair_set: list[str] = field(default_factory=list)
     method: str = ""
     calls: int = 0
+    #: Every counterfactual actually executed, in order. Recorded rather than
+    #: reconstructed, so the audit can be replayed and checked after the fact.
+    probes: list[dict] = field(default_factory=list)
 
 
-def _repaired_without(store, agent, task, removed) -> bool:
+def _repaired_without(store, agent, task, removed, d=None, phase="") -> bool:
     """Does the task actually SUCCEED with `removed` excluded from retrieval?
 
     Success must mean CORRECT, not merely "no longer a repairable failure".
@@ -33,13 +36,22 @@ def _repaired_without(store, agent, task, removed) -> bool:
     model exposes this immediately; the deterministic stand-in never does, because
     it pays whenever any address is present.
     """
-    return run(store, agent, task, exclude=set(removed), record=False).outcome is Outcome.CORRECT
+    r = run(store, agent, task, exclude=set(removed), record=False)
+    repaired = r.outcome is Outcome.CORRECT
+    if d is not None:
+        d.probes.append({"phase": phase, "excluded": sorted(removed),
+                         "outcome": r.outcome.value, "repaired": repaired,
+                         "recipient": r.decision.get("args", {}).get("recipient")})
+    return repaired
 
 
 def diagnose(store, agent, task, use_provenance_prior: bool = True) -> Diagnosis:
     start = agent.calls
     base = run(store, agent, task, record=False)
     d = Diagnosis(task["id"], base.failed, base.outcome.value)
+    d.probes.append({"phase": "baseline", "excluded": [], "outcome": base.outcome.value,
+                     "repaired": False,
+                     "recipient": base.decision.get("args", {}).get("recipient")})
     if not d.harmful:
         d.calls = agent.calls - start
         return d
@@ -48,7 +60,7 @@ def diagnose(store, agent, task, use_provenance_prior: bool = True) -> Diagnosis
 
     # 1) Leave-one-out.
     for m in retrieved:
-        d.loo[m.id] = 1 if _repaired_without(store, agent, task, [m.id]) else 0
+        d.loo[m.id] = 1 if _repaired_without(store, agent, task, [m.id], d, "loo") else 0
     singles = [m for m in retrieved if d.loo[m.id]]
     if singles:
         d.repair_set = [min(singles, key=lambda m: m.trust).id]
@@ -62,7 +74,7 @@ def diagnose(store, agent, task, use_provenance_prior: bool = True) -> Diagnosis
     removed: list[str] = []
     for m in order:
         removed.append(m.id)
-        if _repaired_without(store, agent, task, removed):
+        if _repaired_without(store, agent, task, removed, d, "greedy"):
             break
     else:
         d.method = "unrepairable within retrieved set"
@@ -70,7 +82,7 @@ def diagnose(store, agent, task, use_provenance_prior: bool = True) -> Diagnosis
         return d
     for mid in list(reversed(removed)):
         trial = [r for r in removed if r != mid]
-        if _repaired_without(store, agent, task, trial):
+        if _repaired_without(store, agent, task, trial, d, "prune"):
             removed = trial
     d.repair_set = removed
     d.method = "greedy + prune (" + ("provenance prior" if use_provenance_prior else "retrieval order") + ")"

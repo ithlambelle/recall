@@ -69,6 +69,32 @@
   .callout b{color:var(--warn)}
   svg text{font-family:var(--mono);font-size:10px;fill:var(--ink)}
   .hidden{display:none}
+  /* --- terminal replay --------------------------------------------------- */
+  .term{background:#08090b;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .term-bar{display:flex;align-items:center;gap:8px;padding:9px 14px;background:#101116;
+    border-bottom:1px solid var(--line)}
+  .term-bar i{width:11px;height:11px;border-radius:50%;display:inline-block}
+  .term-title{color:var(--dim);font-size:12px;font-family:var(--mono);margin-left:6px}
+  .term-ctl{margin-left:auto;display:flex;gap:6px;align-items:center}
+  .term-ctl button{padding:4px 10px;font-size:12px;border-radius:6px}
+  .term-body{padding:14px 16px;font-family:var(--mono);font-size:12.5px;line-height:1.65;
+    height:460px;overflow:auto;white-space:pre}
+  .term-body>div{min-height:1.65em}
+  @media (max-width:900px){.term-body{font-size:11px}}
+  .term-body .cmd{color:#fff;font-weight:700}
+  .term-body .dim{color:var(--dim)}
+  .term-body .ok{color:var(--ok)}
+  .term-body .bad{color:var(--bad)}
+  .term-body .warn{color:var(--warn)}
+  .term-body .info{color:var(--tool)}
+  .term-body .pur{color:var(--derived)}
+  .term-body .hl{color:#fff;background:rgba(255,92,92,.18);padding:1px 4px;border-radius:3px}
+  .cursor{display:inline-block;width:8px;height:14px;background:var(--ok);
+    vertical-align:-2px;animation:blink 1.05s steps(2,start) infinite}
+  @keyframes blink{to{visibility:hidden}}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{border:0;border-radius:0;padding:8px 14px;background:var(--panel)}
+  .seg button.on{background:var(--ink);color:#0c0d10}
   footer{color:var(--dim);font-size:12px;margin-top:28px;line-height:1.7}
   code{font-family:var(--mono);font-size:.92em;background:#1b1d23;padding:1px 5px;border-radius:4px}
 </style>
@@ -92,9 +118,26 @@
       </select>
       <button class="primary" id="run">Run pipeline</button>
       <button id="fb">Load recorded run</button>
+      <span class="seg" id="view">
+        <button data-v="term" class="on">Terminal</button>
+        <button data-v="report">Report</button>
+      </span>
       <span class="status" id="status"></span>
     </div>
   </header>
+  <section class="term" id="termwrap">
+    <div class="term-bar">
+      <i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>
+      <span class="term-title">recall — audit replay</span>
+      <span class="term-ctl">
+        <button id="t-play">Pause</button>
+        <button id="t-speed">1&times;</button>
+        <button id="t-skip">Skip to end</button>
+        <button id="t-restart">Replay</button>
+      </span>
+    </div>
+    <div class="term-body" id="term"></div>
+  </section>
   <div id="out"></div>
   <footer>
     Builds on MemAudit (arXiv:2605.23723) for counterfactual influence and dependency-guided
@@ -266,6 +309,172 @@ function render(trace) {
   out.innerHTML = h;
 }
 
+/* ---- terminal replay ---------------------------------------------------
+   Every line below is derived from recorded trace data. The counterfactual
+   probes are the ones the pipeline actually executed, in order, not a
+   reconstruction for presentation. ------------------------------------- */
+const pad = (s, n) => String(s).padEnd(n);
+
+function termLines(trace) {
+  const S = k => trace.steps.find(s => s.kind === k);
+  const init = S("initial"), runs = S("run"), diag = S("diagnose"),
+        rb = S("rollback"), fin = S("final"), sum = trace.summary;
+  const L = [];
+  const add = (t = "", c = "", d = 26) => L.push({t, c, d});
+
+  const model = (sum.usage && sum.usage.model) || trace.agent;
+  add(`$ recall run --agent ${model} --policy ${trace.policy}`, "cmd", 420);
+  add();
+
+  const bySrc = {};
+  init.memories.forEach(m => bySrc[m.source] = (bySrc[m.source] || 0) + 1);
+  add(`[store]  ${init.memories.length} memories · ` +
+      Object.entries(bySrc).map(([k, v]) => `${v} ${k}`).join(" · "), "dim");
+  init.memories.filter(m => m.source === "web" || m.derived_from.length).forEach(m => {
+    const prov = m.derived_from.length ? `<- ${m.derived_from.join(",")}` : "";
+    add(`[write]  ${pad(m.id, 5)} ${pad(m.source.toUpperCase(), 8)} trust ${m.trust.toFixed(2)}  ${prov}`,
+        m.source === "web" ? "bad" : "pur");
+  });
+  add(`         trust is assigned by provenance, never by reading content`, "dim", 320);
+  add();
+
+  add("$ agent run-payables", "cmd", 380);
+  runs.runs.forEach(r => {
+    const c = r.outcome === "CORRECT" ? "ok" : r.outcome === "UNSAFE_ACTION" ? "bad" : "warn";
+    add(`  ${pad(r.task_id, 4)} ${pad(r.supplier, 10)} -> ${pad(r.decision.tool, 13)} ` +
+        `${pad(r.decision.recipient || "-", 40)} ${r.outcome}`, c, 150);
+  });
+  add(`         ${runs.failed_count} of ${runs.runs.length} tasks failed because of memory`,
+      runs.failed_count ? "bad" : "dim", 320);
+  add();
+
+  diag.diagnoses.filter(d => d.harmful).forEach(d => {
+    add(`$ recall diagnose ${d.task_id}`, "cmd", 380);
+    add(`  baseline outcome: ${d.outcome}`, "bad", 200);
+    let phase = "";
+    (d.probes || []).forEach(p => {
+      if (p.phase === "baseline") return;
+      if (p.phase !== phase) {
+        phase = p.phase;
+        const label = {loo: "leave-one-out: remove each retrieved memory alone",
+                       greedy: "cumulative removal, ordered by ascending provenance trust",
+                       prune: "prune to a minimal set: is every member necessary?"}[phase];
+        add(`  --- ${label}`, "info", 300);
+      }
+      const c = p.repaired ? "ok" : "dim";
+      add(`  [${pad(p.phase, 6)}] exclude ${pad("{" + p.excluded.join(",") + "}", 22)} ` +
+          `-> ${pad(p.outcome, 22)} ${p.repaired ? "REPAIRED" : "no repair"}`, c, 110);
+    });
+    if (!d.single_cause_found) {
+      add();
+      add(`  !! leave-one-out found no single causal memory`, "warn", 420);
+      add(`     the poisoned record and the profile derived from it each restate the`, "dim", 40);
+      add(`     attacker's address, so removing either alone changes nothing.`, "dim", 320);
+    }
+    add(`  => repair set {${d.repair_set.join(", ")}} via ${d.method}`, "ok", 420);
+    add(`     ${d.calls} agent calls`, "dim");
+    add();
+  });
+
+  if (rb.diagnosed.length) {
+    add(`$ recall rollback --diagnosed ${rb.diagnosed.join(",")}`, "cmd", 400);
+    const byId = Object.fromEntries(fin.memories.map(m => [m.id, m]));
+    const closure = rb.deactivated.concat(rb.preserved).filter(i => !rb.diagnosed.includes(i));
+    add(`  descendants(${rb.diagnosed.join(",")}) = {${closure.join(", ")}}`, "info", 320);
+    rb.deactivated.forEach(id => {
+      const m = byId[id] || {};
+      const why = rb.diagnosed.includes(id) ? "diagnosed as causal"
+                : "derived from the poison, no independent trusted support";
+      add(`  ${pad(id, 5)} DEACTIVATE  ${why}`, "bad", 140);
+    });
+    rb.preserved.forEach(id => {
+      const m = byId[id] || {};
+      add(`  ${pad(id, 5)} PRESERVE    independently supported by ` +
+          `${(m.independent_support || []).join(",")} (trusted)`, "ok", 300);
+    });
+    const unseen = rb.deactivated.filter(id =>
+      !runs.runs.some(r => r.used_memories.includes(id)));
+    if (unseen.length) {
+      add();
+      add(`  note: ${unseen.join(",")} was never retrieved by any task, so no`, "warn", 40);
+      add(`        counterfactual could have found it. Diagnosis alone leaves it`, "warn", 40);
+      add(`        active, waiting to be recalled later. The graph catches it.`, "warn", 420);
+    }
+    add();
+    add("$ recall replay --affected-only", "cmd", 380);
+    rb.replayed.forEach(r => {
+      add(`  ${pad(r.old_action, 4)} (${r.task_id}) -> ${pad(r.decision.recipient || r.decision.tool, 40)} ` +
+          `${r.outcome}`, r.repaired ? "ok" : "bad", 200);
+    });
+    const skipped = runs.runs.length - rb.replayed.length;
+    add(`         ${rb.replayed.length} replayed, ${skipped} untouched ` +
+        `(${rb.calls} agent calls)`, "dim", 320);
+    add();
+  }
+
+  add("$ recall status", "cmd", 380);
+  add(`  tasks recovered    ${sum.recovered}/${sum.tasks}`, sum.recovered === sum.tasks ? "ok" : "bad");
+  add(`  benign kept        ${sum.benign_kept}/${sum.benign_total}`,
+      sum.benign_kept === sum.benign_total ? "ok" : "warn");
+  add(`  poison active      ${sum.poison_left}`, sum.poison_left ? "bad" : "ok");
+  add(`  outcomes           ${Object.entries(sum.outcome_counts).map(([k, v]) => k + "=" + v).join("  ")}`, "dim");
+  add(`  repair calls       ${sum.repair_calls}`, "dim");
+  if (sum.usage) {
+    add(`  spend              $${sum.usage.cost_usd.toFixed(4)} · ` +
+        `${sum.usage.parse_errors} parse errors`, "dim");
+  }
+  return L;
+}
+
+const term = {lines: [], i: 0, timer: null, speed: 1, playing: false};
+
+function termRender() {
+  const el = $("#term");
+  el.innerHTML = term.lines.slice(0, term.i)
+    .map(l => `<div class="${l.c}">${esc(l.t) || "&nbsp;"}</div>`).join("") +
+    (term.i < term.lines.length ? '<span class="cursor"></span>' : "");
+  el.scrollTop = el.scrollHeight;
+}
+
+function termStep() {
+  if (term.i >= term.lines.length) { term.playing = false; $("#t-play").textContent = "Replay"; termRender(); return; }
+  const line = term.lines[term.i++];
+  termRender();
+  term.timer = setTimeout(termStep, Math.max(8, (line.d ?? 26) / term.speed));
+}
+
+function termStart(trace) {
+  clearTimeout(term.timer);
+  term.lines = termLines(trace);
+  term.i = 0;
+  term.playing = true;
+  $("#t-play").textContent = "Pause";
+  termStep();
+}
+
+$("#t-play").onclick = () => {
+  if (term.i >= term.lines.length) { term.i = 0; term.playing = true; $("#t-play").textContent = "Pause"; return termStep(); }
+  term.playing = !term.playing;
+  $("#t-play").textContent = term.playing ? "Pause" : "Play";
+  if (term.playing) termStep(); else clearTimeout(term.timer);
+};
+$("#t-speed").onclick = () => {
+  term.speed = term.speed === 1 ? 2 : term.speed === 2 ? 4 : 1;
+  $("#t-speed").textContent = term.speed + "×";
+};
+$("#t-skip").onclick = () => { clearTimeout(term.timer); term.i = term.lines.length; term.playing = false;
+  $("#t-play").textContent = "Replay"; termRender(); };
+$("#t-restart").onclick = () => { term.i = 0; clearTimeout(term.timer); term.playing = true;
+  $("#t-play").textContent = "Pause"; termStep(); };
+
+$("#view").onclick = e => {
+  const b = e.target.closest("button"); if (!b) return;
+  [...$("#view").children].forEach(x => x.classList.toggle("on", x === b));
+  const isTerm = b.dataset.v === "term";
+  $("#termwrap").classList.toggle("hidden", !isTerm);
+  $("#out").classList.toggle("hidden", isTerm);
+};
+
 async function call(path, body) {
   const t0 = performance.now();
   statusEl.textContent = "running…";
@@ -277,6 +486,7 @@ async function call(path, body) {
     const j = await r.json();
     if (!r.ok) throw new Error(j.detail || r.statusText);
     render(j);
+    termStart(j);
     statusEl.textContent = `done in ${((performance.now() - t0) / 1000).toFixed(1)}s`;
   } catch (e) {
     statusEl.textContent = "";
