@@ -32,17 +32,21 @@ def main() -> None:
         print(f"{out.relative_to(ROOT)}  {out.stat().st_size:,} bytes  "
               f"recovered {trace['summary']['recovered']}/{trace['summary']['tasks']}")
 
-    recorded = ROOT / "recorded_trace.json"
-    if recorded.exists():
-        for name in ("claude-haiku.json", "../api/fallback"):
-            dest = TRACES / name if name.endswith(".json") else DOCS / "api" / "fallback"
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_text(recorded.read_text())
-        t = json.loads(recorded.read_text())
-        print(f"traces/claude-haiku.json  real run: {t['summary']['usage']['model']}, "
-              f"recovered {t['summary']['recovered']}/{t['summary']['tasks']}")
-    else:
-        print("WARNING: recorded_trace.json missing; the Claude option will have no trace")
+    # Recorded real-model runs, committed verbatim so publishing never spends money.
+    recorded = sorted((ROOT / "traces").glob("claude-*.json"))
+    if not recorded:
+        print("WARNING: no recorded model traces; the Claude options will have no data")
+    for src in recorded:
+        shutil.copy(src, TRACES / src.name)
+        t = json.loads(src.read_text())
+        before = next(x for x in t["steps"] if x["kind"] == "run")["outcome_counts"]
+        print(f"traces/{src.name}  {t['summary']['usage']['model']}  "
+              f"recovered {t['summary']['recovered']}/{t['summary']['tasks']}  before={before}")
+
+    first = ROOT / "traces" / "claude-haiku.json"
+    if first.exists():
+        (DOCS / "api").mkdir(parents=True, exist_ok=True)
+        shutil.copy(first, DOCS / "api" / "fallback")
 
     print(f"\nstatic site in {DOCS.relative_to(ROOT)}/ -- serve it with:")
     print("  python3 -m http.server -d docs 8099")
