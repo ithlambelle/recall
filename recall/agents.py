@@ -35,7 +35,9 @@ class ClaudeAgent:
     def __init__(self, model: str | None = None):
         import anthropic
         self.client = anthropic.Anthropic()
-        self.model = model or os.environ.get("RECALL_MODEL", "claude-haiku-4-5-20251001")
+        # Bare model IDs only: date-suffixed variants are not current API IDs.
+        # Override with RECALL_MODEL to test whether a stronger model resists the poison.
+        self.model = model or os.environ.get("RECALL_MODEL", "claude-haiku-4-5")
         self.calls = 0
 
     def decide(self, task: dict, memories: list[Memory]) -> dict:

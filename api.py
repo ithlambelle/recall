@@ -51,7 +51,7 @@ def health():
     return {
         "ok": True,
         "claude_available": bool(os.environ.get("ANTHROPIC_API_KEY")),
-        "model": os.environ.get("RECALL_MODEL", "claude-haiku-4-5-20251001"),
+        "model": os.environ.get("RECALL_MODEL", "claude-haiku-4-5"),
         "fallback_trace": FALLBACK.exists(),
     }
 
