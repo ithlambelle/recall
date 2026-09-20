@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall</title>
+<style>
+  :root{
+    --bg:#0c0d10; --panel:#141519; --line:#24262d; --ink:#e8e9ed; --dim:#8b8f9a;
+    --user:#3ddc84; --tool:#4aa8ff; --web:#ff5c5c; --derived:#c07cff;
+    --warn:#ffab2e; --ok:#3ddc84; --bad:#ff5c5c;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",sans-serif;}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 16px 96px}
+  header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}
+  h1{margin:0;font-size:26px;letter-spacing:-.02em}
+  h1 span{color:var(--dim);font-weight:400}
+  .sub{color:var(--dim);margin-top:6px;max-width:64ch}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:18px}
+  select,button{background:var(--panel);color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:8px 12px;font:inherit;font-size:14px}
+  button{cursor:pointer;font-weight:600}
+  button.primary{background:var(--ink);color:#0c0d10;border-color:var(--ink)}
+  button:disabled{opacity:.5;cursor:default}
+  .status{color:var(--dim);font-size:13px;font-family:var(--mono)}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:18px 20px;margin-bottom:16px}
+  section h2{margin:0 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
+  section h3{margin:0 0 14px;font-size:18px;letter-spacing:-.01em}
+  .note{color:var(--dim);font-size:13.5px;margin:10px 0 0;max-width:72ch}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:8px}
+  .mem{border:1px solid var(--line);border-left-width:3px;border-radius:8px;padding:8px 10px;
+    background:#101116;font-size:12.5px}
+  .mem .top{display:flex;gap:6px;align-items:center;margin-bottom:4px}
+  .mid{font-family:var(--mono);color:var(--dim);font-size:11px}
+  .badge{font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;
+    border-radius:99px;border:1px solid currentColor;font-weight:700}
+  .mem.user{border-left-color:var(--user)} .badge.user{color:var(--user)}
+  .mem.tool{border-left-color:var(--tool)} .badge.tool{color:var(--tool)}
+  .mem.web{border-left-color:var(--web)} .badge.web{color:var(--web)}
+  .mem.derived{border-left-color:var(--derived)} .badge.derived{color:var(--derived)}
+  .mem.deactivated{opacity:.34}
+  .mem.deactivated .content{text-decoration:line-through}
+  .mem.quarantined{opacity:.6;border-style:dashed}
+  .mem.flagged{box-shadow:0 0 0 2px var(--bad);border-left-color:var(--bad)}
+  .mem.preserved{box-shadow:0 0 0 2px var(--ok)}
+  .trust{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--dim)}
+  .content{color:#c8cad2}
+  .prov{margin-top:5px;font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.07em}
+  td.m{font-family:var(--mono);font-size:12.5px}
+  .tag{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:5px;font-weight:700}
+  .tag.harm{background:rgba(255,92,92,.16);color:var(--bad)}
+  .tag.ok{background:rgba(61,220,132,.14);color:var(--ok)}
+  .tag.skip{background:rgba(139,143,154,.14);color:var(--dim)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:4px}
+  .kpi{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:#101116}
+  .kpi b{display:block;font-size:21px;font-family:var(--mono);letter-spacing:-.02em}
+  .kpi span{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--dim);font-size:11.5px;margin-top:12px}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+  .callout{border-left:3px solid var(--warn);background:rgba(255,171,46,.07);
+    padding:10px 14px;border-radius:0 8px 8px 0;margin:12px 0 0;font-size:13.5px}
+  .callout b{color:var(--warn)}
+  svg text{font-family:var(--mono);font-size:10px;fill:var(--ink)}
+  .hidden{display:none}
+  footer{color:var(--dim);font-size:12px;margin-top:28px;line-height:1.7}
+  code{font-family:var(--mono);font-size:.92em;background:#1b1d23;padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Recall <span>— causal diagnosis and dependency-guided rollback for agent memory</span></h1>
+    <p class="sub">An agent read a spoofed vendor page and wrote it to memory, then summarised it
+      into a &ldquo;supplier profile&rdquo;. Deleting the page it read is not enough. Recall finds which
+      memories actually caused the harm, traces everything derived from them, rolls back only that
+      branch, and replays only the affected actions.</p>
+    <div class="controls">
+      <select id="agent">
+        <option value="rule">Agent: offline stand-in (deterministic)</option>
+        <option value="claude">Agent: Claude (live)</option>
+      </select>
+      <select id="policy">
+        <option value="permissive">Write policy: permissive</option>
+        <option value="enforce">Write policy: enforce (quarantine &lt; 0.5)</option>
+      </select>
+      <button class="primary" id="run">Run pipeline</button>
+      <button id="fb">Load recorded run</button>
+      <span class="status" id="status"></span>
+    </div>
+  </header>
+  <div id="out"></div>
+  <footer>
+    Builds on MemAudit (arXiv:2605.23723) for counterfactual influence and dependency-guided
+    rollback repair (arXiv:2608.10502); threat model from MINJA (arXiv:2503.03704).
+    We could not find public implementations of the first two — Recall chains them, feeding
+    MemAudit-style diagnosis into a rollback step that assumes diagnosis is already given.<br>
+    Ground truth is used only to colour the <b>known poison</b> annotation; the pipeline never reads it.
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const out = $("#out"), statusEl = $("#status");
+const esc = s => String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+function memCard(m, {flagged=[], preserved=[], poison=[]}={}) {
+  const cls = [m.source, m.status,
+    flagged.includes(m.id) ? "flagged" : "",
+    preserved.includes(m.id) ? "preserved" : ""].join(" ");
+  const prov = [];
+  if (m.derived_from.length) prov.push("derived from " + m.derived_from.join(", "));
+  if (m.independent_support.length) prov.push("independently supported by " + m.independent_support.join(", "));
+  if (m.status !== "active") prov.push(m.status.toUpperCase());
+  return `<div class="mem ${cls}">
+    <div class="top">
+      <span class="mid">${m.id}</span>
+      <span class="badge ${m.source}">${m.source}</span>
+      ${poison.includes(m.id) ? '<span class="mid" title="evaluation-only label">known poison</span>' : ""}
+      <span class="trust">trust ${m.trust.toFixed(1)}</span>
+    </div>
+    <div class="content">${esc(m.content)}</div>
+    ${prov.length ? `<div class="prov">${prov.join(" · ")}</div>` : ""}
+  </div>`;
+}
+
+const legend = `<div class="legend">
+  <span><i style="background:var(--user)"></i>user</span>
+  <span><i style="background:var(--tool)"></i>tool</span>
+  <span><i style="background:var(--web)"></i>web</span>
+  <span><i style="background:var(--derived)"></i>derived</span>
+  <span>dashed = quarantined · struck through = rolled back</span></div>`;
+
+/* Provenance graph for the branch that matters, laid out by generation. */
+function provGraph(mems, {deactivated=[], preserved=[], diagnosed=[]}) {
+  const byId = Object.fromEntries(mems.map(m => [m.id, m]));
+  const keep = mems.filter(m => m.derived_from.length ||
+      mems.some(o => o.derived_from.includes(m.id)));
+  if (!keep.length) return "";
+  const gen = {}, depth = m => gen[m.id] ??=
+    m.derived_from.length ? 1 + Math.max(...m.derived_from.map(p => byId[p] ? depth(byId[p]) : 0)) : 0;
+  keep.forEach(depth);
+  const rows = {};
+  keep.forEach(m => (rows[gen[m.id]] ??= []).push(m));
+  const W = 150, H = 66, PADX = 12, PADY = 14;
+  const maxCols = Math.max(...Object.values(rows).map(r => r.length));
+  const pos = {};
+  Object.entries(rows).forEach(([g, list]) => list.forEach((m, i) => {
+    pos[m.id] = { x: PADX + i * W + (maxCols - list.length) * W / 2, y: PADY + g * H };
+  }));
+  const width = PADX * 2 + maxCols * W, height = PADY * 2 + (Object.keys(rows).length) * H;
+  let svg = `<svg viewBox="0 0 ${width} ${height}" width="100%" style="max-height:${height}px">
+    <defs><marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="2.4" orient="auto">
+      <path d="M0,0 L6,2.4 L0,4.8 z" fill="#4e525e"/></marker></defs>`;
+  keep.forEach(m => m.derived_from.forEach(p => {
+    if (!pos[p]) return;
+    svg += `<line x1="${pos[p].x + 58}" y1="${pos[p].y + 26}" x2="${pos[m.id].x + 58}"
+      y2="${pos[m.id].y + 2}" stroke="#4e525e" stroke-width="1.2" marker-end="url(#a)"/>`;
+  }));
+  keep.forEach(m => {
+    const fill = deactivated.includes(m.id) ? "#2a1418"
+      : preserved.includes(m.id) ? "#12291b" : "#181a20";
+    const stroke = diagnosed.includes(m.id) ? "#ff5c5c"
+      : deactivated.includes(m.id) ? "#7a3038"
+      : preserved.includes(m.id) ? "#3ddc84" : "#31343d";
+    const label = deactivated.includes(m.id) ? "rolled back"
+      : preserved.includes(m.id) ? "preserved" : m.source;
+    svg += `<g><rect x="${pos[m.id].x}" y="${pos[m.id].y}" width="116" height="26" rx="6"
+        fill="${fill}" stroke="${stroke}" stroke-width="1.4"/>
+      <text x="${pos[m.id].x + 9}" y="${pos[m.id].y + 16}">${m.id}</text>
+      <text x="${pos[m.id].x + 44}" y="${pos[m.id].y + 16}" fill="#8b8f9a">${label}</text></g>`;
+  });
+  return svg + "</svg>";
+}
+
+function render(trace) {
+  const S = k => trace.steps.find(s => s.kind === k);
+  const poison = trace.ground_truth_poison;
+  const init = S("initial"), run = S("run"), diag = S("diagnose"),
+        rb = S("rollback"), fin = S("final"), sum = trace.summary;
+  let h = "";
+
+  h += `<section><h2>Step 1</h2><h3>${esc(init.title)}</h3>
+    <div class="grid">${init.memories.map(m => memCard(m, {poison})).join("")}</div>
+    ${legend}
+    ${init.policy === "enforce" ? `<div class="callout"><b>Enforce mode.</b>
+      The web-sourced write scores 0.2 and is quarantined on arrival, and the profile derived
+      from it inherits that trust, so the attack never reaches the agent.</div>` : ""}</section>`;
+
+  h += `<section><h2>Step 2</h2><h3>${esc(run.title)}</h3><table>
+    <tr><th>task</th><th>supplier</th><th>pays</th><th>expected</th><th></th><th>memories used</th></tr>
+    ${run.runs.map(r => `<tr>
+      <td class="m">${r.task_id}</td><td>${esc(r.supplier)}</td>
+      <td class="m">${esc(r.decision.recipient ?? r.decision.tool)}</td>
+      <td class="m">${esc(r.expected)}</td>
+      <td><span class="tag ${r.harmful ? "harm" : "ok"}">${r.harmful ? "harmful" : "ok"}</span></td>
+      <td class="m">${r.used_memories.join(" ")}</td></tr>`).join("")}</table>
+    <p class="note">${run.harmful_count} of ${run.runs.length} payments went to an address the
+      agent was told about by a web page it read.</p></section>`;
+
+  const harmful = diag.diagnoses.filter(d => d.harmful);
+  h += `<section><h2>Step 3</h2><h3>${esc(diag.title)}</h3>
+    <p class="note">Each retrieved memory is removed and the task re-run. Influence is behavioural:
+      does removing it flip the agent away from the harmful action? Removal re-runs retrieval, so the
+      next memory fills the vacated slot.</p>`;
+  harmful.forEach(d => {
+    h += `<table style="margin-top:12px">
+      <tr><th>task ${d.task_id} — leave one out</th><th>repairs alone?</th></tr>
+      ${Object.entries(d.loo).map(([mid, v]) => `<tr><td class="m">${mid}</td>
+        <td><span class="tag ${v ? "ok" : "skip"}">${v ? "yes" : "no"}</span></td></tr>`).join("")}
+    </table>`;
+  });
+  if (diag.loo_insufficient) {
+    h += `<div class="callout"><b>Leave-one-out explains nothing.</b>
+      No single memory is causal, because the poisoned page and the profile derived from it each
+      restate the attacker's address — remove either and the other still answers. This is the
+      failure mode MemAudit names as its weak spot. Recall falls back to cumulative removal ordered
+      by provenance trust, then prunes to a minimal set.</div>`;
+  }
+  h += `<p class="note">Repair set:
+      <b>${diag.diagnosed.join(", ") || "none"}</b>
+      via ${esc(harmful[0]?.method ?? "n/a")} · ${diag.calls} agent calls</p></section>`;
+
+  h += `<section><h2>Step 4</h2><h3>Provenance graph and descendant closure</h3>
+    ${provGraph(fin.memories, {deactivated: rb.deactivated, preserved: rb.preserved, diagnosed: rb.diagnosed})}
+    <div class="callout"><b>Why diagnosis alone is not enough.</b>
+      Counterfactual attribution can only see memories that were retrieved. Descendants that no task
+      retrieves are invisible to it and survive, waiting to be recalled later. Rollback walks the
+      derived-from graph instead, and deactivates the whole branch.</div></section>`;
+
+  h += `<section><h2>Step 5</h2><h3>${esc(rb.title)}</h3><table>
+    <tr><th>outcome</th><th>memories</th></tr>
+    <tr><td>diagnosed as causal</td><td class="m">${rb.diagnosed.join(", ") || "—"}</td></tr>
+    <tr><td>deactivated (with descendants)</td><td class="m">${rb.deactivated.join(", ") || "—"}</td></tr>
+    <tr><td>preserved (independent trusted support)</td><td class="m">${rb.preserved.join(", ") || "—"}</td></tr>
+    </table>
+    ${rb.replayed.length ? `<table style="margin-top:14px">
+      <tr><th>replayed action</th><th>task</th><th>now pays</th><th></th></tr>
+      ${rb.replayed.map(r => `<tr><td class="m">${r.old_action}</td><td class="m">${r.task_id}</td>
+        <td class="m">${esc(r.decision.recipient ?? r.decision.tool)}</td>
+        <td><span class="tag ${r.repaired ? "ok" : "harm"}">${r.repaired ? "repaired" : "still harmful"}</span></td>
+      </tr>`).join("")}</table>
+      <p class="note">Only actions that consumed a deactivated memory were replayed
+        (${rb.calls} agent calls). Unaffected payments were left untouched, and superseded actions
+        stay on the record rather than being deleted.</p>` : ""}</section>`;
+
+  h += `<section><h2>Result</h2><h3>${esc(fin.title)}</h3>
+    <div class="kpis">
+      <div class="kpi"><b>${sum.recovered}/${sum.tasks}</b><span>tasks recovered</span></div>
+      <div class="kpi"><b>${sum.benign_kept}/${sum.benign_total}</b><span>benign memories kept</span></div>
+      <div class="kpi"><b>${sum.poison_left}</b><span>poison still active</span></div>
+      <div class="kpi"><b>${sum.repair_calls}</b><span>repair calls</span></div>
+    </div>
+    <div class="grid" style="margin-top:14px">
+      ${fin.memories.map(m => memCard(m, {flagged: rb.diagnosed, preserved: rb.preserved, poison})).join("")}
+    </div>${legend}
+    <p class="note">Agent: <code>${esc(trace.agent)}</code> · policy
+      <code>${esc(trace.policy)}</code> · ${sum.agent_calls_total} total agent calls.</p></section>`;
+
+  out.innerHTML = h;
+}
+
+async function call(path, body) {
+  const t0 = performance.now();
+  statusEl.textContent = "running…";
+  $("#run").disabled = $("#fb").disabled = true;
+  try {
+    const r = await fetch(path, body ? {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)
+    } : {});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || r.statusText);
+    render(j);
+    statusEl.textContent = `done in ${((performance.now() - t0) / 1000).toFixed(1)}s`;
+  } catch (e) {
+    statusEl.textContent = "";
+    out.innerHTML = `<section><h3>Run failed</h3>
+      <p class="note">${esc(e.message)}</p></section>`;
+  } finally {
+    $("#run").disabled = $("#fb").disabled = false;
+  }
+}
+
+$("#run").onclick = () => call("/api/run", {
+  agent: $("#agent").value, policy: $("#policy").value, use_provenance_prior: true });
+$("#fb").onclick = () => call("/api/fallback");
+call("/api/run", {agent: "rule", policy: "permissive", use_provenance_prior: true});
+</script>
+</body>
+</html>

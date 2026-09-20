@@ -222,3 +222,52 @@ def test_pipeline_is_deterministic(fresh):
         rep = rollback(st, agent, diagnosed, tasks)
         runs.append((sorted(diagnosed), rep.deactivated, rep.preserved, agent.calls))
     assert runs[0] == runs[1] == runs[2]
+
+
+# --- the trace the UI renders must agree with the experiment table ------------
+
+def test_pipeline_trace_matches_experiment_numbers():
+    """The API and experiment.py must never drift apart."""
+    from recall.pipeline import run_pipeline
+    import experiment
+
+    trace = run_pipeline(RuleAgent())
+    st, agent, tasks = scenario.build(), RuleAgent(), scenario.TASKS
+    for t in tasks.values():
+        run_task(st, agent, t)
+    calls = experiment.strategy_recall(st, agent, tasks)
+    row = experiment.evaluate(st, agent, tasks)
+
+    assert trace["summary"]["recovered"] == row["recovered"] == 4
+    assert trace["summary"]["benign_kept"] == row["benign_kept"] == 14
+    assert trace["summary"]["poison_left"] == row["poison_left"] == 0
+    assert trace["summary"]["repair_calls"] == calls == 26
+
+
+def test_trace_is_json_serializable_and_hides_no_ground_truth_from_view():
+    import json
+    from recall.pipeline import run_pipeline
+
+    trace = run_pipeline(RuleAgent())
+    json.dumps(trace)
+    diag = next(s for s in trace["steps"] if s["kind"] == "diagnose")
+    assert diag["loo_insufficient"] is True
+    assert diag["diagnosed"] == ["m14", "m15"]
+
+
+def test_enforce_policy_over_quarantines_a_legitimate_memory():
+    """Honest cost of the write policy, and the argument for rollback on top of it.
+
+    m17 ("Northwind terms confirmed as net-30") is legitimate and independently
+    supported by the user-stated m02, but it is derived from the poisoned profile,
+    so taint propagation quarantines it on arrival. Rollback, which reasons about
+    independent support, keeps it. A policy alone cannot make that distinction.
+    """
+    st = scenario.build("enforce")
+    assert st.get("m17").status is Status.QUARANTINED
+    assert "m17" not in scenario.POISON_IDS, "m17 is a benign memory"
+
+    rolled, agent, tasks = scenario.build(), RuleAgent(), scenario.TASKS
+    rep = rollback(rolled, agent, {"m14", "m15"}, tasks)
+    assert "m17" in rep.preserved
+    assert rolled.get("m17").status is Status.ACTIVE
