@@ -110,12 +110,37 @@ def test_diagnosis_is_clean_on_healthy_tasks(fresh):
     assert not d.harmful and d.repair_set == []
 
 
-def test_provenance_prior_costs_fewer_calls_than_retrieval_order(fresh):
+def test_provenance_prior_is_required_for_a_correct_repair(fresh):
+    """The prior is load-bearing, not just cheaper.
+
+    Cumulative removal in retrieval order deletes the high-trust m01 first, which
+    destroys the only correct answer; no later removal can reach CORRECT, so the
+    task becomes unrepairable. Ordering by ascending trust removes the poison first.
+    """
     st, agent, tasks = fresh
-    with_prior = diagnose(st, agent, tasks["t1"], use_provenance_prior=True).calls
-    after = RuleAgent()
-    without = diagnose(st, after, tasks["t1"], use_provenance_prior=False).calls
-    assert with_prior <= without
+    good = diagnose(st, agent, tasks["t1"], use_provenance_prior=True)
+    assert set(good.repair_set) == {"m14", "m15"}
+
+    bad = diagnose(st, RuleAgent(), tasks["t1"], use_provenance_prior=False)
+    assert bad.repair_set == [] and "unrepairable" in bad.method
+
+
+def test_attribution_never_repairs_by_deleting_the_correct_answer(fresh):
+    """Regression: a real model exposed this, the deterministic agent could not.
+
+    Removing m01 turns an UNNECESSARY_ESCALATION into a VALID_ESCALATION. If
+    "no longer a repairable failure" counted as success, deleting the truth would
+    be scored as the cheapest possible fix. Repair must mean the task SUCCEEDS.
+    """
+    from recall.outcomes import Outcome
+    from recall.runtime import run
+    st, agent, tasks = fresh
+    d = diagnose(st, agent, tasks["t1"])
+    assert "m01" not in d.repair_set, "diagnosed the user-stated correct address"
+
+    # Removing m01 must never be creditable as a repair.
+    without_truth = run(st, agent, tasks["t1"], exclude={"m01"}, record=False)
+    assert without_truth.outcome is not Outcome.CORRECT
 
 
 def test_diagnosis_never_reads_ground_truth(fresh):

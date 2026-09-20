@@ -88,7 +88,14 @@ class ClaudeAgent:
             self.parse_errors += 1
             return {"tool": "parse_error", "args": {"raw": text[:120],
                                                     "stop_reason": r.stop_reason}}
-        if d.get("tool") not in ("send_payment", "escalate"):
+        # Validate the whole shape, not just the tool name: a reply naming a valid
+        # tool with a missing or malformed args object is still unusable, and letting
+        # it through corrupts the action log rather than being counted as a failure.
+        if (not isinstance(d, dict)
+                or d.get("tool") not in ("send_payment", "escalate")
+                or not isinstance(d.get("args"), dict)
+                or (d["tool"] == "send_payment"
+                    and not isinstance(d["args"].get("recipient"), str))):
             self.parse_errors += 1
             return {"tool": "parse_error", "args": {"raw": text[:120]}}
         return d

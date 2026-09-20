@@ -23,9 +23,17 @@ class Diagnosis:
     calls: int = 0
 
 
-def _fails_without(store, agent, task, removed) -> bool:
-    """Does the task still fail with `removed` excluded from retrieval?"""
-    return run(store, agent, task, exclude=set(removed), record=False).failed
+def _repaired_without(store, agent, task, removed) -> bool:
+    """Does the task actually SUCCEED with `removed` excluded from retrieval?
+
+    Success must mean CORRECT, not merely "no longer a repairable failure".
+    Scoring any non-failure as a repair creates a perverse incentive: deleting the
+    memory that holds the right answer turns an UNNECESSARY_ESCALATION into a
+    VALID_ESCALATION, so destroying the truth would score as a perfect fix. A real
+    model exposes this immediately; the deterministic stand-in never does, because
+    it pays whenever any address is present.
+    """
+    return run(store, agent, task, exclude=set(removed), record=False).outcome is Outcome.CORRECT
 
 
 def diagnose(store, agent, task, use_provenance_prior: bool = True) -> Diagnosis:
@@ -40,7 +48,7 @@ def diagnose(store, agent, task, use_provenance_prior: bool = True) -> Diagnosis
 
     # 1) Leave-one-out.
     for m in retrieved:
-        d.loo[m.id] = 0 if _fails_without(store, agent, task, [m.id]) else 1
+        d.loo[m.id] = 1 if _repaired_without(store, agent, task, [m.id]) else 0
     singles = [m for m in retrieved if d.loo[m.id]]
     if singles:
         d.repair_set = [min(singles, key=lambda m: m.trust).id]
@@ -54,7 +62,7 @@ def diagnose(store, agent, task, use_provenance_prior: bool = True) -> Diagnosis
     removed: list[str] = []
     for m in order:
         removed.append(m.id)
-        if not _fails_without(store, agent, task, removed):
+        if _repaired_without(store, agent, task, removed):
             break
     else:
         d.method = "unrepairable within retrieved set"
@@ -62,7 +70,7 @@ def diagnose(store, agent, task, use_provenance_prior: bool = True) -> Diagnosis
         return d
     for mid in list(reversed(removed)):
         trial = [r for r in removed if r != mid]
-        if not _fails_without(store, agent, task, trial):
+        if _repaired_without(store, agent, task, trial):
             removed = trial
     d.repair_set = removed
     d.method = "greedy + prune (" + ("provenance prior" if use_provenance_prior else "retrieval order") + ")"
