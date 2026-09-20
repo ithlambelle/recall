@@ -7,7 +7,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY recall/ ./recall/
 COPY static/ ./static/
-COPY api.py scenario.py experiment.py demo.py ./
+COPY api.py scenario.py experiment.py demo.py probe.py matrix.py ./
+# Real-model trace, so a keyless deployment still shows genuine results.
+COPY recorded_trace.json ./
 COPY tests/ ./tests/
 
 # Fail the build if the invariants the demo claims do not hold.

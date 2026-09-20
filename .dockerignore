@@ -1,0 +1,8 @@
+.env
+.venv/
+.git/
+__pycache__/
+*.pyc
+last_trace.json
+matrix_results.json
+.claude/
