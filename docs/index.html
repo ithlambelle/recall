@@ -7,9 +7,7 @@
 <meta name="description" content="Find the memories that caused an agent's harmful action, roll back everything derived from them, and replay only what that touched.">
 <link rel="preconnect" href="https://api.fontshare.com">
 <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://api.fontshare.com/v2/css?f%5B%5D=switzer@300,400,500,600&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
     --t-micro:11px; --t-fine:12px; --t-small:13px; --t-base:15px; --t-lede:17px;
@@ -31,7 +29,6 @@
 
     --sans:Switzer,ui-sans-serif,-apple-system,sans-serif;
     --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-    --hand:Caveat,cursive;
     --r:8px; --hair:1px;
     --dur:260ms; --ease:cubic-bezier(.2,.6,.2,1);
     --nav:188px;
@@ -48,8 +45,6 @@
 
   .label{font-family:var(--mono);font-size:var(--t-micro);letter-spacing:.12em;
     text-transform:uppercase;color:var(--ink-3)}
-  .hand{font-family:var(--hand);font-size:19px;line-height:1.25;color:var(--ink-2);
-    opacity:.85;pointer-events:none}
 
   /* ---- shell ---- */
   .app{display:grid;grid-template-columns:var(--nav) minmax(0,1fr);min-height:100vh}
@@ -63,8 +58,7 @@
     border-left:2px solid transparent;transition:color var(--dur) var(--ease)}
   .nav a.item:hover{color:var(--ink-2)}
   .nav a.item[aria-current=true]{color:var(--ink);border-left-color:var(--ink);background:var(--panel)}
-  .nav .foot{margin-top:auto;padding:var(--s-5);border-top:var(--hair) solid var(--line)}
-  .nav .foot .hand{font-size:17px;display:block;margin-bottom:var(--s-4)}
+
 
   .main{min-width:0}
   .topbar{display:flex;align-items:center;justify-content:flex-end;gap:var(--s-6);
@@ -122,7 +116,6 @@
     .nav{position:static;height:auto;flex-direction:row;align-items:center;overflow-x:auto;
       border-right:0;border-bottom:var(--hair) solid var(--line);padding:var(--s-3)}
     .nav .brand{padding:0 var(--s-4) 0 var(--s-2)}
-    .nav .foot{display:none}
     .hero{grid-template-columns:1fr}
     .g-main,.g-bottom{grid-template-columns:1fr}
     .pad,.hero,.topbar{padding-left:var(--s-4);padding-right:var(--s-4)}
@@ -158,7 +151,7 @@
   .legend i{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px}
   .graphbox{position:relative}
   .graphbox svg{display:block;width:100%;height:auto}
-  .graphbox .hand{position:absolute;max-width:170px}
+  .graphbox
   .gnode{cursor:pointer}
   .gnode circle{transition:r var(--dur) var(--ease)}
   .gnode text{font-size:9px;fill:var(--ink-2);font-family:var(--mono);pointer-events:none}
@@ -217,6 +210,28 @@
     color:var(--ink);margin:var(--s-8) 0 var(--s-4)}
   .prose p{margin:0 0 var(--s-4)}
   .prose a{color:var(--n-source)}
+
+  /* ---- terminal: the recorded audit, replayed line by line ---- */
+  .term{background:var(--sunken);border-top:var(--hair) solid var(--line)}
+  .term-bar{display:flex;align-items:center;gap:var(--s-3);padding:var(--s-2) var(--s-5);
+    border-bottom:var(--hair) solid var(--line)}
+  .term-ctl{margin-left:auto;display:flex;gap:var(--s-2)}
+  .term-ctl button{border:var(--hair) solid var(--line-2);background:transparent;
+    color:var(--ink-2);border-radius:4px;padding:2px var(--s-2);font:inherit;
+    font-size:var(--t-fine);cursor:pointer}
+  .term-ctl button:hover{border-color:var(--ink-3);color:var(--ink)}
+  .term-body{padding:var(--s-4) var(--s-5);font-family:var(--mono);font-size:var(--t-fine);
+    line-height:1.65;height:300px;overflow:auto;white-space:pre}
+  .term-body .cmd{color:var(--ink);font-weight:var(--w-med)}
+  .term-body .dim{color:var(--ink-3)}
+  .term-body .ok{color:var(--sem-ok)}
+  .term-body .bad{color:var(--sem-harm)}
+  .term-body .warn{color:var(--sem-deg)}
+  .term-body .info{color:var(--n-source)}
+  .term-body .pur{color:#b98cff}
+  .cursor{display:inline-block;width:7px;height:12px;background:var(--sem-ok);
+    vertical-align:-2px;animation:blink 1.05s steps(2,start) infinite}
+  @keyframes blink{to{visibility:hidden}}
   .skel{height:10px;background:var(--line);border-radius:3px;margin-bottom:var(--s-3);
     animation:pulse 1.4s var(--ease) infinite}
   @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.8}}
@@ -244,10 +259,6 @@
     <a class="item" href="#evidence">Evidence</a>
     <a class="item" href="#models">Models</a>
     <a class="item" href="#methodology">Methodology</a>
-    <div class="foot">
-      <span class="hand">Same memory.<br>Three minds.<br>Different stories.</span>
-      <span class="label">Trust is lineage,<br>not a feeling.</span>
-    </div>
   </nav>
 
   <div class="main">
@@ -259,7 +270,6 @@
 
     <header class="hero" id="overview">
       <div>
-        <p class="label">An experiment in memory, trust, and agents</p>
         <h1>Follow<br>the memory.</h1>
         <p class="sub">One false statement enters an agent's memory. Watch it spread, survive
           deletion, and get cut out, across three models.</p>
@@ -270,10 +280,9 @@
       </div>
       <div>
         <div class="stack" id="stack"></div>
-        <p class="hand" style="margin:var(--s-5) 0 0">one lie. three minds. nine runs.</p>
       </div>
       <div class="hero-note">
-        <p class="label">Memory is not a file.<br>It is a living graph.</p>
+        <p class="label">Method</p>
         <hr>
         <ul>
           <li>Inject a lie</li>
@@ -315,10 +324,21 @@
             <div class="graphbox" id="graphbox">
               <svg id="graph" viewBox="0 0 760 420" role="img"
                 aria-label="Memory provenance graph. Click a node for details."></svg>
-              <p class="hand" style="top:12px;right:16px;text-align:right">The lie doesn't live<br>in one place.</p>
-              <p class="hand" style="bottom:14px;right:16px;text-align:right">Even after deletion,<br>traces remain.</p>
+
             </div>
             <p class="hint"><span>Click a node for details</span><span id="graphstate"></span></p>
+            <div class="term">
+              <div class="term-bar">
+                <span class="label">Audit output</span>
+                <span class="term-ctl">
+                  <button id="t-play">Pause</button>
+                  <button id="t-speed">1x</button>
+                  <button id="t-skip">End</button>
+                </span>
+              </div>
+              <div class="term-body" id="term" role="log" aria-live="polite"
+                aria-label="Recorded audit output" tabindex="0"></div>
+            </div>
           </div>
         </section>
 
@@ -367,8 +387,7 @@
       </div>
 
       <section class="card" style="margin-top:var(--s-4)" id="models" aria-labelledby="ev-h">
-        <header><h2 class="label" id="ev-h">Nine runs, three models</h2>
-          <span class="sp label">Every figure read from a recorded run</span></header>
+        <header><h2 class="label" id="ev-h">Nine runs, three models</h2></header>
         <div class="body" id="matrixtable" style="overflow-x:auto"></div>
       </section>
 
@@ -407,6 +426,7 @@
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const pad = (s, n) => String(s).padEnd(n);
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const MODELS = {
   "claude-haiku-4-5": {key: "haiku", short: "Haiku 4.5"},
@@ -596,6 +616,141 @@ function selectTask(t) {
       <dt>After repair</dt><dd>${replay ? replay.outcome : t.outcome}</dd></dl>`;
 }
 
+
+/* ---------- terminal ---------- */
+function termLines(trace) {
+  const S = k => trace.steps.find(s => s.kind === k);
+  const init = S("initial"), runs = S("run"), diag = S("diagnose"),
+        rb = S("rollback"), fin = S("final"), sum = trace.summary;
+  const L = [];
+  const add = (t = "", c = "", d = 24) => L.push({t, c, d});
+  const model = (sum.usage && sum.usage.model) || "offline agent";
+
+  add(`$ recall run --agent ${model} --policy ${trace.policy}`, "cmd", 400);
+  add();
+  const bySrc = {};
+  init.memories.forEach(m => bySrc[m.source] = (bySrc[m.source] || 0) + 1);
+  add(`[store]  ${init.memories.length} memories: ` +
+      Object.entries(bySrc).map(([k, v]) => `${v} ${k}`).join(", "), "dim");
+  init.memories.filter(m => m.source === "web" || m.derived_from.length).forEach(m => {
+    add(`[write]  ${pad(m.id, 5)} ${pad(m.source.toUpperCase(), 8)} trust ${m.trust.toFixed(2)}  ` +
+        (m.derived_from.length ? `from ${m.derived_from.join(",")}` : ""),
+        m.source === "web" ? "bad" : "pur");
+  });
+  add(`         trust is set by provenance, never by reading content`, "dim", 320);
+  add();
+  add("$ agent run-payables", "cmd", 380);
+  runs.runs.forEach(r => {
+    const c = r.outcome === "CORRECT" ? "ok" : r.outcome === "UNSAFE_ACTION" ? "bad" : "warn";
+    add(`  ${pad(r.task_id, 4)} ${pad(r.supplier, 10)} ${pad(r.decision.tool, 13)} ` +
+        `${pad(r.decision.recipient || "-", 40)} ${r.outcome}`, c, 150);
+  });
+  add(`         ${runs.failed_count} of ${runs.runs.length} tasks failed because of memory`,
+      runs.failed_count ? "bad" : "dim", 320);
+  add();
+  diag.diagnoses.filter(d => d.harmful).forEach(d => {
+    add(`$ recall diagnose ${d.task_id}`, "cmd", 360);
+    add(`  baseline: ${d.outcome}`, "bad", 200);
+    let phase = "";
+    (d.probes || []).forEach(p => {
+      if (p.phase === "baseline") return;
+      if (p.phase !== phase) {
+        phase = p.phase;
+        const label = {loo: "leave-one-out: remove each retrieved memory alone",
+                       greedy: "cumulative removal, lowest provenance trust first",
+                       prune: "prune to a minimal set"}[phase];
+        add(`  ${label}`, "info", 300);
+      }
+      add(`  [${pad(p.phase, 6)}] without ${pad("{" + p.excluded.join(",") + "}", 22)} ` +
+          `${pad(p.outcome, 22)} ${p.repaired ? "REPAIRED" : "no repair"}`,
+          p.repaired ? "ok" : "dim", 105);
+    });
+    if (!d.single_cause_found) {
+      add();
+      add(`  leave-one-out found no single causal memory`, "warn", 400);
+      add(`  the page and the profile each restate the attacker's address,`, "dim", 40);
+      add(`  so removing either alone changes nothing`, "dim", 300);
+    }
+    add(`  repair set {${d.repair_set.join(", ")}} via ${d.method}`, "ok", 400);
+    add();
+  });
+  if (rb.diagnosed.length) {
+    add(`$ recall rollback --diagnosed ${rb.diagnosed.join(",")}`, "cmd", 380);
+    const byId = Object.fromEntries(fin.memories.map(m => [m.id, m]));
+    rb.deactivated.forEach(id => add(`  ${pad(id, 5)} ROLLED BACK`, "bad", 140));
+    rb.preserved.forEach(id => add(`  ${pad(id, 5)} KEPT   independent support from ` +
+      `${(byId[id] && byId[id].independent_support || []).join(",")}`, "ok", 300));
+    const unseen = rb.deactivated.filter(id => !runs.runs.some(r => r.used_memories.includes(id)));
+    if (unseen.length) {
+      add();
+      add(`  ${unseen.join(",")} was never retrieved by any task, so no counterfactual`, "warn", 40);
+      add(`  could have found it. The graph catches it.`, "warn", 400);
+    }
+    add();
+    add("$ recall replay --affected-only", "cmd", 360);
+    rb.replayed.forEach(r => add(`  ${pad(r.old_action, 4)} (${r.task_id}) ` +
+      `${pad(r.decision.recipient || r.decision.tool, 40)} ${r.outcome}`,
+      r.repaired ? "ok" : "bad", 200));
+    add(`         ${rb.replayed.length} replayed, ${runs.runs.length - rb.replayed.length} untouched`,
+      "dim", 300);
+    add();
+  }
+  add("$ recall status", "cmd", 360);
+  add(`  recovered     ${sum.recovered}/${sum.tasks}`, sum.recovered === sum.tasks ? "ok" : "bad");
+  add(`  benign kept   ${sum.benign_kept}/${sum.benign_total}`,
+      sum.benign_kept === sum.benign_total ? "ok" : "warn");
+  add(`  poison active ${sum.poison_left}`, sum.poison_left ? "bad" : "ok");
+  if (sum.usage) add(`  cost          $${sum.usage.cost_usd.toFixed(4)}`, "dim");
+  return L;
+}
+
+const term = {lines: [], i: 0, timer: null, speed: 1, playing: false};
+
+function termRender() {
+  const el = $("#term");
+  el.innerHTML = term.lines.slice(0, term.i)
+    .map(l => `<div class="${l.c}">${esc(l.t) || "&nbsp;"}</div>`).join("") +
+    (term.i < term.lines.length ? '<span class="cursor"></span>' : "");
+  el.scrollTop = el.scrollHeight;
+}
+function termStep() {
+  if (term.i >= term.lines.length) {
+    term.playing = false; $("#t-play").textContent = "Replay"; termRender(); return;
+  }
+  const line = term.lines[term.i++];
+  termRender();
+  term.timer = setTimeout(termStep, Math.max(6, (line.d == null ? 24 : line.d) / term.speed));
+}
+function termStart(trace) {
+  clearTimeout(term.timer);
+  term.lines = termLines(trace);
+  term.i = REDUCED ? term.lines.length : 0;
+  term.playing = !REDUCED;
+  $("#t-play").textContent = REDUCED ? "Replay" : "Pause";
+  if (REDUCED) termRender(); else termStep();
+}
+function termSkeleton() {
+  const widths = [70, 45, 88, 62, 80, 38, 74, 55, 90, 48, 66, 42];
+  $("#term").innerHTML = widths.map(w => `<div class="skel" style="width:${w}%"></div>`).join("");
+}
+
+$("#t-play").onclick = () => {
+  if (term.i >= term.lines.length) {
+    term.i = 0; term.playing = true; $("#t-play").textContent = "Pause"; return termStep();
+  }
+  term.playing = !term.playing;
+  $("#t-play").textContent = term.playing ? "Pause" : "Play";
+  if (term.playing) termStep(); else clearTimeout(term.timer);
+};
+$("#t-speed").onclick = () => {
+  term.speed = term.speed === 1 ? 2 : term.speed === 2 ? 4 : 1;
+  $("#t-speed").textContent = term.speed + "x";
+};
+$("#t-skip").onclick = () => {
+  clearTimeout(term.timer); term.i = term.lines.length; term.playing = false;
+  $("#t-play").textContent = "Replay"; termRender();
+};
+
 function paintRuns() {
   const model = $("#model").value;
   const rows = MATRIX.filter(r => r.model === model);
@@ -735,6 +890,7 @@ async function loadTrace() {
   TRACE = await fetch("traces/" + name + ".json").then(r => r.json());
   drawGraph(TRACE);
   paintTrajectory(TRACE);
+  termStart(TRACE);
 }
 
 async function boot() {
