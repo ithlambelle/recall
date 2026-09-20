@@ -37,6 +37,7 @@ class RunRequest(BaseModel):
     agent: str = "rule"
     policy: str = "permissive"
     use_provenance_prior: bool = True
+    use_jev: bool = False
 
 
 def _make_agent(kind: str):
@@ -56,6 +57,7 @@ def health():
         "ok": True,
         "claude_available": bool(os.environ.get("ANTHROPIC_API_KEY")),
         "model": os.environ.get("RECALL_MODEL", "claude-haiku-4-5"),
+        "jev_available": bool(os.environ.get("TYPESAFE_API_KEY")),
         "fallback_trace": FALLBACK.exists(),
     }
 
@@ -65,8 +67,14 @@ def run(req: RunRequest):
     if req.policy not in ("permissive", "enforce"):
         raise HTTPException(400, f"unknown policy {req.policy!r}")
     agent = _make_agent(req.agent)
+    triage = None
+    if req.use_jev:
+        if not os.environ.get("TYPESAFE_API_KEY"):
+            raise HTTPException(503, "TYPESAFE_API_KEY is not configured on the server")
+        from recall.jev import JevTriage
+        triage = JevTriage()
     with _lock:
-        trace = run_pipeline(agent, req.policy, req.use_provenance_prior)
+        trace = run_pipeline(agent, req.policy, req.use_provenance_prior, triage=triage)
     # Keep the most recent successful run as the offline fallback for the demo.
     try:
         FALLBACK.write_text(json.dumps(trace))

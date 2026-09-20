@@ -12,12 +12,17 @@ them, rolls back only that branch, and replays only the affected actions.
 python3 demo.py                      # terminal narrative, offline, deterministic
 python3 experiment.py                # delete-source vs reset vs Recall
 python3 demo.py --policy enforce     # provenance write policy quarantines the poison up front
+python3 demo.py --jev                # Jev prioritizes counterfactual tests; replay stays authoritative
 python3 -m pytest tests/ -q          # 34 offline invariants, no API key needed
 
 uvicorn api:app --port 8014          # web UI with the terminal replay
 python3 probe.py --model claude-sonnet-5      # 1 call: does the poison land?
 python3 matrix.py --repeats 3                 # variance across models
 ```
+
+Jev is optional and reads `TYPESAFE_API_KEY` from `.env`. It only orders the
+counterfactual investigation. A memory is repaired only after removing it makes
+the task succeed in a real replay; a Jev failure falls back to provenance order.
 
 ## Layout
 

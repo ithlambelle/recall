@@ -1,4 +1,5 @@
 fastapi>=0.115
 uvicorn[standard]>=0.30
 anthropic>=0.40    # only needed for --agent claude
+typesafe-sdk>=0.6  # only needed for --jev triage
 requests>=2.31     # only needed for posting frames to the facade
