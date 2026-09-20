@@ -82,7 +82,7 @@
   .strip i[data-prov=derived]{background:var(--prov-derived)}
   .strip i[data-off=true]{opacity:.2;height:5px}
   .strip-key{font-family:var(--mono);font-size:var(--t-micro);color:var(--ink-3);
-    letter-spacing:var(--track-micro);text-transform:uppercase;white-space:nowrap}
+    white-space:nowrap}
   @media (max-width:760px){.strip,.strip-key{display:none}}
 
   /* ---- hero ---- */
@@ -92,18 +92,19 @@
   .hero p{margin:var(--s-5) 0 0;font-size:clamp(18px,2.2vw,26px);font-weight:var(--w-light);
     line-height:var(--lh-snug);color:var(--ink-2);max-width:26ch;letter-spacing:-.015em}
   .facts{margin-top:var(--s-7);display:flex;gap:var(--s-6);flex-wrap:wrap;
-    font-family:var(--mono);font-size:var(--t-micro);letter-spacing:var(--track-micro);
-    text-transform:uppercase;color:var(--ink-3)}
+    font-size:var(--t-small);color:var(--ink-3)}
   .facts b{color:var(--ink);font-weight:var(--w-bold)}
 
   /* ---- sections: hairlines carry structure. No cards, no shadows. ---- */
   section{border-top:var(--hair) solid var(--line);padding:var(--s-8) 0}
+  section.argument{padding:var(--s-10) 0}          /* prose: room to breathe */
+  section.evidence{padding:var(--s-8) 0 var(--s-9)} /* dense: tighter */
+  section.instrument{padding:var(--s-7) 0}          /* the tool: edge to edge */
+  section.case{border-top:0;padding:0}
   h2{margin:0 0 var(--s-5);font-size:var(--t-h3);font-weight:var(--w-light);
     letter-spacing:var(--track-display);line-height:var(--lh-tight);max-width:var(--m-display)}
   h3{margin:var(--s-7) 0 var(--s-4);font-size:var(--t-h4);font-weight:var(--w-med);
     letter-spacing:-.015em}
-  .eyebrow{font-family:var(--mono);font-size:var(--t-micro);letter-spacing:var(--track-micro);
-    text-transform:uppercase;color:var(--ink-3);margin:0 0 var(--s-3)}
   p{margin:0 0 var(--s-4);max-width:var(--m-body)}
   .lede{font-size:var(--t-lede);font-weight:var(--w-light);color:var(--ink-2);
     max-width:var(--m-lede);line-height:var(--lh-snug)}
@@ -124,12 +125,9 @@
   /* ---- terminal ---- */
   .term{background:var(--sunken);border:var(--hair) solid var(--line)}
   .term-bar{display:flex;align-items:center;gap:var(--s-3);padding:var(--s-2) var(--s-4);
-    border-bottom:var(--hair) solid var(--line);font-family:var(--mono);
-    font-size:var(--t-micro);letter-spacing:var(--track-micro);text-transform:uppercase;
-    color:var(--ink-3)}
+    border-bottom:var(--hair) solid var(--line);font-size:var(--t-small);color:var(--ink-3)}
   .term-ctl{margin-left:auto;display:flex;gap:var(--s-2)}
-  .term-ctl button{padding:var(--s-1) var(--s-2);font-size:var(--t-micro);
-    letter-spacing:var(--track-micro);text-transform:uppercase}
+  .term-ctl button{padding:var(--s-1) var(--s-2);font-size:var(--t-fine)}
   .term-body{padding:var(--s-4);font-family:var(--mono);font-size:var(--t-fine);
     line-height:var(--lh-body);height:440px;overflow:auto;white-space:pre}
   .term-body .cmd{color:var(--ink);font-weight:var(--w-bold)}
@@ -171,13 +169,10 @@
 
   /* ---- tables ---- */
   table{width:100%;border-collapse:collapse;font-size:var(--t-small);margin-bottom:var(--s-5)}
-  caption{text-align:left;font-family:var(--mono);font-size:var(--t-micro);
-    letter-spacing:var(--track-micro);text-transform:uppercase;color:var(--ink-3);
-    padding-bottom:var(--s-3)}
+  caption{text-align:left;font-size:var(--t-small);color:var(--ink-3);padding-bottom:var(--s-3)}
   th,td{text-align:left;padding:var(--s-3) var(--s-4) var(--s-3) 0;
     border-bottom:var(--hair) solid var(--line);vertical-align:top}
-  th{color:var(--ink-3);font-weight:var(--w-med);font-size:var(--t-micro);
-    text-transform:uppercase;letter-spacing:var(--track-micro);font-family:var(--mono)}
+  th{color:var(--ink-3);font-weight:var(--w-med);font-size:var(--t-small)}
   tbody th{color:var(--ink);text-transform:none;font-family:var(--sans);
     font-size:var(--t-small);letter-spacing:0}
   td.m{font-family:var(--mono);font-size:var(--t-fine)}
@@ -187,15 +182,13 @@
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--s-5)}
   .kpi{border-top:var(--hair) solid var(--line);padding-top:var(--s-3)}
   .kpi b{display:block;font-size:var(--t-kpi);font-weight:var(--w-light);letter-spacing:-.035em}
-  .kpi span{color:var(--ink-3);font-family:var(--mono);font-size:var(--t-micro);
-    text-transform:uppercase;letter-spacing:var(--track-micro)}
+  .kpi span{color:var(--ink-3);font-size:var(--t-small)}
 
   /* ---- memory rows, not tiles ---- */
   .mems{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:0 var(--s-6)}
   .mem{border-top:var(--hair) solid var(--line);padding:var(--s-3) 0;font-size:var(--t-fine)}
   .mem .id{font-family:var(--mono);font-size:var(--t-micro);color:var(--ink-3)}
-  .mem .prov{font-family:var(--mono);font-size:var(--t-micro);letter-spacing:var(--track-micro);
-    text-transform:uppercase}
+  .mem .prov{font-family:var(--mono);font-size:var(--t-micro)}
   .mem[data-prov=user] .prov{color:var(--prov-user)}
   .mem[data-prov=tool] .prov{color:var(--prov-tool)}
   .mem[data-prov=web] .prov{color:var(--prov-web)}
@@ -204,9 +197,9 @@
   .mem[data-off=true] .body{text-decoration:line-through}
   .mem .body{color:var(--ink-2);margin-top:var(--s-1)}
 
-  .note{border-left:2px solid var(--sem-degraded);padding:var(--s-2) 0 var(--s-2) var(--s-4);
-    margin:var(--s-5) 0;max-width:var(--m-body);font-weight:var(--w-light);color:var(--ink-2)}
-  .note b{color:var(--sem-degraded);font-weight:var(--w-med)}
+  .note{margin:var(--s-6) 0;max-width:var(--m-lede);font-weight:var(--w-light);
+    font-size:var(--t-lede);line-height:var(--lh-snug);color:var(--ink-2)}
+  .note b{color:var(--ink);font-weight:var(--w-med)}
 
   .papers dt{font-weight:var(--w-med);margin-top:var(--s-6);font-size:var(--t-h4);
     max-width:var(--m-body)}
@@ -225,12 +218,11 @@
   .console{background:var(--sunken);border:var(--hair) solid var(--line);
     padding:var(--s-6) var(--s-6) var(--s-5)}
   .console-top{display:flex;align-items:flex-start;gap:var(--s-6);margin-bottom:var(--s-8)}
-  .console-id{font-family:var(--mono);font-size:var(--t-micro);letter-spacing:var(--track-micro);
-    text-transform:uppercase;color:var(--ink-3);line-height:2}
+  .console-id{font-size:var(--t-small);color:var(--ink-3);line-height:1.9}
+  .console-id code{font-family:var(--mono);font-size:var(--t-fine)}
   .console-id b{color:var(--ink);font-weight:var(--w-med)}
   .figure{margin-left:auto;text-align:right}
-  .figure span{display:block;font-family:var(--mono);font-size:var(--t-micro);
-    letter-spacing:var(--track-micro);text-transform:uppercase;color:var(--ink-3)}
+  .figure span{display:block;font-size:var(--t-small);color:var(--ink-3)}
   .figure b{display:block;font-size:clamp(40px,6vw,76px);font-weight:var(--w-light);
     letter-spacing:-.04em;line-height:1;margin-top:var(--s-2);font-variant-numeric:tabular-nums}
 
@@ -240,9 +232,8 @@
   .stage .fill{height:100%;width:0;background:var(--st);
     transition:width var(--dur-3) var(--ease)}
   .stage[data-on=true] .fill{width:100%}
-  .stage .name{display:block;margin-top:var(--s-2);font-family:var(--mono);
-    font-size:var(--t-micro);letter-spacing:var(--track-micro);text-transform:uppercase;
-    color:var(--ink-3);transition:color var(--dur-2) var(--ease)}
+  .stage .name{display:block;margin-top:var(--s-2);font-size:var(--t-small);
+    font-weight:var(--w-med);color:var(--ink-3);transition:color var(--dur-2) var(--ease)}
   .stage[data-on=true] .name{color:var(--ink)}
   .stage .val{display:block;font-family:var(--mono);font-size:var(--t-fine);
     color:var(--ink-3);margin-top:var(--s-1);font-variant-numeric:tabular-nums}
@@ -251,6 +242,37 @@
     .stagebar{grid-template-columns:repeat(2,1fr);gap:var(--s-4) 3px}
     .console{padding:var(--s-5) var(--s-4)}
   }
+
+
+  /* ---- case file: scroll position maps to pipeline stage ----------------
+     The graph is pinned while the beats scroll past it, so the reader moves
+     the mechanism forward themselves. Scroll is the time axis, which is why
+     this motion is tied to input rather than running on its own. */
+  .case-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);
+    gap:0 var(--s-9)}
+  .case-graph{position:sticky;top:calc(var(--s-9) + var(--s-2));align-self:start;
+    padding:var(--s-5) 0}
+  .beat{min-height:62vh;display:flex;flex-direction:column;justify-content:center;
+    opacity:.3;transition:opacity var(--dur-3) var(--ease)}
+  .beat[data-on=true]{opacity:1}
+  .beat .n{font-family:var(--mono);font-size:var(--t-fine);color:var(--ink-3);
+    margin-bottom:var(--s-3)}
+  .beat h3{margin:0 0 var(--s-3);font-size:var(--t-h3);font-weight:var(--w-light);
+    letter-spacing:var(--track-display);line-height:var(--lh-tight);max-width:18ch}
+  .beat p{margin:0;color:var(--ink-2);max-width:42ch}
+  .beat .readout{margin-top:var(--s-4);font-family:var(--mono);font-size:var(--t-fine);
+    color:var(--ink-3)}
+  .beat .readout b{font-weight:var(--w-body)}
+  .beat .readout .harm{color:var(--sem-harm)}
+  .beat .readout .ok{color:var(--sem-safe)}
+  .beat .readout .deg{color:var(--sem-degraded)}
+  @media (max-width:860px){
+    .case-grid{grid-template-columns:1fr}
+    .case-graph{position:sticky;top:52px;background:var(--ground);z-index:2;
+      padding:var(--s-4) 0;border-bottom:var(--hair) solid var(--line);order:-1}
+    .beat{min-height:auto;padding:var(--s-7) 0;opacity:1}
+  }
+  @media (prefers-reduced-motion:reduce){.beat{opacity:1}}
 
   .hidden{display:none}
 
@@ -267,7 +289,7 @@
 <header class="masthead">
   <div class="inner">
     <a class="mark" href="#main">Recall</a>
-    <span class="strip-key" aria-hidden="true">Memory</span>
+    
     <div class="strip" id="strip" role="img" aria-label="State of the memory store"></div>
     <span class="strip-key" id="stripstat" aria-live="polite"></span>
   </div>
@@ -286,7 +308,6 @@
   </div>
 
   <section aria-labelledby="run-h">
-    <p class="eyebrow">Run</p>
     <h2 id="run-h">Watch it find the poison</h2>
     <div class="controls">
       <label class="vh" for="agent">Run to replay</label>
@@ -331,23 +352,62 @@
     <div id="out" class="hidden"></div>
   </section>
 
-  <section aria-labelledby="mech-h">
-    <p class="eyebrow">Mechanism</p>
-    <h2 id="mech-h">A lie spreads, then the branch is cut</h2>
-    <p class="lede">Memories an agent writes from other memories inherit their trust. That is what
-      makes a poisoned note survive deletion, and what lets Recall find everything it reached.</p>
-    <div class="graphwrap">
-      <svg class="graph" id="graph" viewBox="0 0 640 260" role="img"
-           aria-label="Provenance graph showing the poisoned memory, what was derived from it, and which parts were rolled back"></svg>
-      <p class="phase" id="phase"></p>
-    </div>
-    <div class="controls" style="margin-top:var(--s-4)">
-      <button id="g-replay">Replay animation</button>
+  <section class="case" aria-labelledby="case-h">
+    <h2 id="case-h" class="vh">How a poisoned memory spreads, and how it is cut out</h2>
+    <div class="case-grid">
+      <div class="case-beats">
+        <div class="beat" data-beat="0">
+          <span class="n">01</span>
+          <h3>A page is read</h3>
+          <p>The agent fetches a vendor notice saying a supplier changed bank details, and
+            writes it down. Nothing about the text looks wrong.</p>
+          <p class="readout" id="b0"></p>
+        </div>
+        <div class="beat" data-beat="1">
+          <span class="n">02</span>
+          <h3>It gets summarised</h3>
+          <p>The agent consolidates its notes into a supplier profile. The claim is now in
+            the agent's own words, and it inherits the distrust of what it came from.</p>
+          <p class="readout" id="b1"></p>
+        </div>
+        <div class="beat" data-beat="2">
+          <span class="n">03</span>
+          <h3>And summarised again</h3>
+          <p>A quarterly summary and a terms note are written from the profile. The lie is
+            now three memories deep, and one of those descendants is never retrieved again.</p>
+          <p class="readout" id="b2"></p>
+        </div>
+        <div class="beat" data-beat="3">
+          <span class="n">04</span>
+          <h3>The agent pays</h3>
+          <p>Invoices run. The tasks that touch this supplier fail, and the tasks that do
+            not are unaffected.</p>
+          <p class="readout" id="b3"></p>
+        </div>
+        <div class="beat" data-beat="4">
+          <span class="n">05</span>
+          <h3>Removing one changes nothing</h3>
+          <p>Each retrieved memory is withheld in turn and the task re-run. None of them
+            repairs it alone, because the page and the profile each restate the address.</p>
+          <p class="readout" id="b4"></p>
+        </div>
+        <div class="beat" data-beat="5">
+          <span class="n">06</span>
+          <h3>The branch is cut</h3>
+          <p>Cumulative removal finds the pair, the graph is walked to everything derived
+            from them, and only the affected payments are redone.</p>
+          <p class="readout" id="b5"></p>
+        </div>
+      </div>
+      <div class="case-graph">
+        <svg class="graph" id="graph" viewBox="0 0 640 260" role="img"
+             aria-label="Provenance graph showing the poisoned memory, what was derived from it, and which parts were rolled back"></svg>
+        <p class="phase" id="phase"></p>
+      </div>
     </div>
   </section>
 
   <section aria-labelledby="what-h">
-    <p class="eyebrow">What happens</p>
     <h2 id="what-h">Deleting the lie is not enough</h2>
     <p class="lede">A bookkeeping agent pays invoices. It reads a page claiming a supplier changed
       bank details, and writes that down. The page is fake.</p>
@@ -364,7 +424,6 @@
   </section>
 
   <section aria-labelledby="ev-h">
-    <p class="eyebrow">Evidence</p>
     <h2 id="ev-h">Nine runs, three models</h2>
     <table>
       <caption>Full pipeline, three runs per model</caption>
@@ -410,7 +469,6 @@
   </section>
 
   <section aria-labelledby="prior-h">
-    <p class="eyebrow">Prior work</p>
     <h2 id="prior-h">Four papers, and the gap between two</h2>
     <dl class="papers">
       <dt><a href="https://arxiv.org/abs/2503.03704" target="_blank" rel="noopener">MINJA: Memory Injection Attacks on LLM Agents via Query-Only Interaction</a></dt>
@@ -508,46 +566,123 @@ function buildGraph(trace) {
   return rb;
 }
 
-let gTimers = [];
-function animateGraph(trace) {
-  gTimers.forEach(clearTimeout); gTimers = [];
-  const rb = buildGraph(trace);
-  const svg = $("#graph"), phase = $("#phase");
-  const node = id => svg.querySelector(`.node[data-id="${id}"]`);
-  const source = rb.diagnosed[0];
-  const downstream = rb.deactivated.concat(rb.preserved);
+/* Scroll position is the time axis: each beat sets the graph to the state the
+   pipeline was in at that step. Nothing animates on its own. */
+let BEAT = -1, CASE = null;
 
-  const steps = [
-    [0, () => { phase.textContent = "A web page is written to memory."; }],
-    [900, () => {
-      if (source) node(source)?.setAttribute("data-state", "tainted");
-      phase.textContent = "It scores low trust, because of where it came from.";
-    }],
-    [2000, () => {
-      downstream.forEach(id => node(id)?.setAttribute("data-state", "tainted"));
-      svg.querySelectorAll(".edge").forEach(e => e.classList.add("tainted"));
-      phase.textContent = "Everything derived from it inherits that distrust.";
-    }],
-    [3300, () => {
-      rb.diagnosed.forEach(id => node(id)?.setAttribute("data-state", "diagnosed"));
-      phase.textContent = `Counterfactual reruns name ${rb.diagnosed.join(" and ")} as the cause.`;
-    }],
-    [4600, () => {
-      rb.deactivated.forEach(id => node(id)?.setAttribute("data-state", "cut"));
-      svg.querySelectorAll(".edge").forEach(e => {
-        e.classList.remove("tainted"); e.classList.add("cut");
-      });
-      phase.textContent = "The branch is rolled back, including memories no task ever retrieved.";
-    }],
-    [5800, () => {
-      rb.preserved.forEach(id => node(id)?.setAttribute("data-state", "kept"));
-      phase.textContent = rb.preserved.length
-        ? `${rb.preserved.join(", ")} survives: independently supported by a trusted memory.`
-        : "Repair complete.";
-    }],
-  ];
-  if (REDUCED) { steps.forEach(([, fn]) => fn()); return; }
-  steps.forEach(([t, fn]) => gTimers.push(setTimeout(fn, t)));
+function caseData(trace) {
+  const S = k => trace.steps.find(x => x.kind === k);
+  const rb = S("rollback"), runs = S("run"), diag = S("diagnose"), fin = S("final");
+  const byId = Object.fromEntries(fin.memories.map(m => [m.id, m]));
+  const source = fin.memories.find(m => m.source === "web");
+  const firstDerived = fin.memories.find(m => m.derived_from.includes(source && source.id));
+  const rest = rb.deactivated.concat(rb.preserved)
+    .filter(id => id !== (source && source.id) && id !== (firstDerived && firstDerived.id));
+  const failed = runs.runs.filter(r => r.outcome !== "CORRECT");
+  const probes = diag.diagnoses.flatMap(d => d.probes || []).filter(x => x.phase === "loo");
+  const unseen = rb.deactivated.filter(id => !runs.runs.some(r => r.used_memories.includes(id)));
+  return {rb, runs, diag, fin, byId, source, firstDerived, rest, failed, probes, unseen};
+}
+
+function fillReadouts(c) {
+  const t = (id, html) => { const el = $("#" + id); if (el) el.innerHTML = html; };
+  const src = c.source;
+  t("b0", src ? `<b>${src.id}</b> written &middot; source <b>${src.source}</b> &middot; ` +
+    `trust <b>${src.trust.toFixed(1)}</b>` : "");
+  t("b1", c.firstDerived ? `<b>${c.firstDerived.id}</b> derived from ` +
+    `${c.firstDerived.derived_from.join(", ")} &middot; trust ` +
+    `<b>${c.firstDerived.trust.toFixed(1)}</b>, the minimum of its parents` : "");
+  t("b2", c.rest.length
+    ? `${c.rest.map(id => "<b>" + id + "</b>").join(", ")} derived` +
+      (c.unseen.length ? ` &middot; <b>${c.unseen.join(", ")}</b> never retrieved again` : "")
+    : "");
+  t("b3", c.runs.runs.map(r => {
+    const cls = r.outcome === "CORRECT" ? "ok" : r.outcome === "UNSAFE_ACTION" ? "harm" : "deg";
+    return `${r.task_id} ${r.supplier} <span class="${cls}">${r.outcome}</span>`;
+  }).join("<br>"));
+  t("b4", c.probes.length
+    ? c.probes.map(x => `without {${x.excluded.join(",")}} &rarr; ` +
+        `<span class="${x.repaired ? "ok" : "harm"}">${x.repaired ? "repaired" : "no repair"}</span>`
+      ).join("<br>")
+    : "");
+  t("b5", `cut <span class="harm">${c.rb.deactivated.join(", ")}</span><br>` +
+    `kept <span class="ok">${c.rb.preserved.join(", ")}</span>` +
+    (c.rb.preserved.length ? ` &middot; independently supported` : "") +
+    `<br>replayed ${c.rb.replayed.length}, untouched ` +
+    `${c.runs.runs.length - c.rb.replayed.length}`);
+}
+
+function setBeat(i) {
+  if (!CASE || i === BEAT) return;
+  BEAT = i;
+  const c = CASE, svg = $("#graph");
+  const node = id => svg.querySelector(`.node[data-id="${id}"]`);
+  svg.querySelectorAll(".node").forEach(n => n.setAttribute("data-state", "idle"));
+  svg.querySelectorAll(".edge").forEach(e => e.classList.remove("tainted", "cut"));
+  const taint = ids => ids.forEach(id => node(id) && node(id).setAttribute("data-state", "tainted"));
+  const phase = $("#phase");
+
+  if (i >= 0 && c.source) taint([c.source.id]);
+  if (i >= 1 && c.firstDerived) taint([c.firstDerived.id]);
+  if (i >= 2) { taint(c.rest); svg.querySelectorAll(".edge").forEach(e => e.classList.add("tainted")); }
+  if (i >= 4) c.rb.diagnosed.forEach(id => node(id) && node(id).setAttribute("data-state", "diagnosed"));
+  if (i >= 5) {
+    c.rb.deactivated.forEach(id => node(id) && node(id).setAttribute("data-state", "cut"));
+    c.rb.preserved.forEach(id => node(id) && node(id).setAttribute("data-state", "kept"));
+    svg.querySelectorAll(".edge").forEach(e => { e.classList.remove("tainted"); e.classList.add("cut"); });
+  }
+  phase.textContent = [
+    "A web-sourced write enters memory.",
+    "Distrust is inherited, not re-evaluated.",
+    "The claim is now several memories deep.",
+    "Only the tasks that retrieve it fail.",
+    "No single memory is causal.",
+    "The branch is cut; supported descendants survive.",
+  ][i] || "";
+}
+
+/* Nearest-beat-to-viewport-centre, recomputed on scroll. Chosen over
+   IntersectionObserver because it is deterministic and testable: the active beat
+   is a pure function of scroll position rather than of observer scheduling. */
+let caseBound = false;
+function syncBeats() {
+  const beats = [...document.querySelectorAll(".beat")];
+  if (!beats.length) return;
+  const mid = window.innerHeight / 2;
+  let best = 0, bestDist = Infinity;
+  beats.forEach((b, i) => {
+    const r = b.getBoundingClientRect();
+    const d = Math.abs(r.top + r.height / 2 - mid);
+    if (d < bestDist) { bestDist = d; best = i; }
+  });
+  beats.forEach((b, i) => b.setAttribute("data-on", String(i === best)));
+  setBeat(Number(beats[best].dataset.beat));
+}
+
+function watchBeats() {
+  const beats = [...document.querySelectorAll(".beat")];
+  if (REDUCED) { beats.forEach(b => b.setAttribute("data-on", "true")); return setBeat(5); }
+  if (!caseBound) {
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => { syncBeats(); ticking = false; });
+    };
+    addEventListener("scroll", onScroll, {passive: true});
+    addEventListener("resize", onScroll, {passive: true});
+    caseBound = true;
+  }
+  syncBeats();
+}
+
+function animateGraph(trace) {
+  buildGraph(trace);
+  CASE = caseData(trace);
+  fillReadouts(CASE);
+  BEAT = -1;
+  setBeat(0);
+  watchBeats();
 }
 
 /* ---------- terminal ---------- */
@@ -672,8 +807,8 @@ function buildConsole(trace) {
      </div>`).join("");
   const model = (sum.usage && sum.usage.model) || "offline stand-in";
   $("#consoleid").innerHTML =
-    `Agent <b>${model}</b><br>Policy <b>${trace.policy}</b><br>` +
-    `Repair calls <b>${sum.repair_calls}</b>`;
+    `Agent <code>${model}</code><br>Policy <code>${trace.policy}</code><br>` +
+    `Repair calls <code>${sum.repair_calls}</code>`;
   $("#figval").textContent = `${sum.recovered}/${sum.tasks}`;
 }
 
@@ -730,7 +865,6 @@ $("#t-skip").onclick = () => {
   clearTimeout(term.timer); term.i = term.lines.length; term.playing = false;
   $("#t-play").textContent = "Replay"; termRender();
 };
-$("#g-replay").onclick = () => { if (TRACE) animateGraph(TRACE); };
 
 $("#view").onclick = e => {
   const b = e.target.closest("button"); if (!b) return;
