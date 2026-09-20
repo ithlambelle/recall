@@ -70,41 +70,53 @@
   .cta:hover{border-color:var(--ink-3)}
   .pad{padding:0 var(--s-7) var(--s-7)}
 
-  /* ---- hero ---- */
-  .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) 210px;
-    gap:var(--s-7);align-items:start;padding:var(--s-4) var(--s-7) var(--s-8)}
-  h1{margin:var(--s-4) 0 0;font-size:var(--t-hero);font-weight:var(--w-light);
+  /* ---- hero matrices: the same store under three models ----------------
+     A display piece, not a control. It plays the sequence once on load and
+     settles on the repaired state. Depth is carried by scale and blur so the
+     three planes read as layers rather than three flat thumbnails. */
+  .hero{display:grid;grid-template-columns:minmax(280px,.8fr) minmax(0,1.45fr);
+    gap:var(--s-8);align-items:center;padding:var(--s-4) var(--s-7) var(--s-6)}
+  .heroText{min-width:0}
+  h1{margin:0;font-size:var(--t-hero);font-weight:var(--w-light);
     letter-spacing:-.035em;line-height:var(--lh-tight)}
-  .hero .sub{color:var(--ink-2);margin:var(--s-5) 0 var(--s-6);max-width:36ch;
+  .hero .sub{color:var(--ink-2);margin:var(--s-4) 0 0;max-width:40ch;
     font-weight:var(--w-light);font-size:var(--t-lede);line-height:var(--lh-snug)}
-  .btns{display:flex;gap:var(--s-3);flex-wrap:wrap}
-  .btn{border:var(--hair) solid var(--line-2);border-radius:var(--r);background:transparent;
-    color:var(--ink);padding:var(--s-3) var(--s-5);font:inherit;font-size:var(--t-small);
-    font-weight:var(--w-med);cursor:pointer;display:inline-flex;gap:var(--s-2);
-    align-items:center;text-decoration:none}
-  .btn.solid{background:var(--raised)}
-  .btn:hover{border-color:var(--ink-3)}
-  .hero-note ul{list-style:none;margin:var(--s-4) 0 0;padding:0}
-  .hero-note li{display:flex;gap:var(--s-3);align-items:baseline;color:var(--ink-2);
-    font-size:var(--t-small);padding:var(--s-1) 0}
-  .hero-note li::before{content:"";width:5px;height:5px;border-radius:50%;
-    background:var(--ink-3);flex:none;transform:translateY(-2px)}
-  .hero-note hr{border:0;border-top:var(--hair) solid var(--line);margin:var(--s-4) 0}
+  .steps{list-style:none;margin:var(--s-5) 0 0;padding:0;display:flex;gap:var(--s-5);
+    flex-wrap:wrap;font-size:var(--t-small);color:var(--ink-3);counter-reset:step}
+  .steps li{display:flex;gap:var(--s-2);align-items:baseline;counter-increment:step}
+  .steps li::before{content:counter(step);font-family:var(--mono);font-size:var(--t-micro)}
 
-  .stack{position:relative;height:230px}
-  .stack .pane{position:absolute;top:0;margin:0;border:var(--hair) solid var(--line-2);
-    border-radius:var(--r);background:linear-gradient(160deg,rgba(28,33,46,.8),rgba(10,12,18,.92));
-    width:46%;height:200px;overflow:hidden}
-  .stack .pane:nth-child(1){left:0;transform:translateY(18px)}
-  .stack .pane:nth-child(2){left:26%;transform:translateY(8px)}
-  .stack .pane:nth-child(3){left:52%}
-  .stack .pane figcaption{position:absolute;left:var(--s-4);bottom:var(--s-3);
-    font-size:var(--t-small);color:var(--ink-2)}
-  .stack svg{width:100%;height:100%}
+  .matrices{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-4);
+    perspective:1100px}
+  .matrix{position:relative;border:var(--hair) solid var(--line-2);border-radius:var(--r);
+    background:linear-gradient(165deg,rgba(26,31,44,.7),rgba(8,9,13,.95));
+    padding:var(--s-3);overflow:hidden;
+    transform:translateZ(var(--mz,0)) scale(var(--ms,1));
+    filter:blur(var(--mb,0));opacity:var(--mo,1);
+    transition:transform .7s var(--ease),filter .7s var(--ease),opacity .7s var(--ease)}
+  .matrix:nth-child(1){--mz:-70px;--ms:.95;--mb:.4px;--mo:.8}
+  .matrix:nth-child(2){--mz:-20px;--ms:.98;--mb:.15px;--mo:.92}
+  .matrix:nth-child(3){--mz:20px}
+  .matrices:hover .matrix{--mz:0;--ms:1;--mb:0;--mo:1}
+  .matrix svg{display:block;width:100%;height:auto}
+  .matrix figcaption{font-size:var(--t-small);color:var(--ink-2);
+    padding:var(--s-2) var(--s-1) 0;line-height:1.5}
+  .matrix figcaption b{display:block;font-family:var(--mono);font-size:var(--t-micro);
+    font-weight:var(--w-body);color:var(--ink-3)}
+  .matrix .mnode{transition:fill .6s var(--ease),opacity .6s var(--ease),r .6s var(--ease)}
+  .matrix .medge{transition:stroke .6s var(--ease),opacity .6s var(--ease)}
+  @media (max-width:1100px){
+    .hero{grid-template-columns:1fr}
+    .matrices{perspective:none}
+    .matrix{--mz:0!important;--ms:1!important;--mb:0!important;--mo:1!important}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .matrix,.matrix .mnode,.matrix .medge{transition:none}
+  }
 
   /* ---- panels ---- */
   .grid{display:grid;gap:var(--s-4)}
-  .g-main{grid-template-columns:250px minmax(0,1fr) 285px}
+  .g-main{grid-template-columns:230px minmax(0,1fr) 270px}
   .g-bottom{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)}
   @media (max-width:1340px){
     .g-main{grid-template-columns:240px minmax(0,1fr)}
@@ -224,7 +236,7 @@
      unrelated memories back and out of focus. The page performs the same
      operation the system does: retrieval changes what is in context. */
   .space{position:relative;perspective:1200px;perspective-origin:50% 45%;
-    height:420px;overflow:hidden;background:
+    height:min(56vh,520px);min-height:380px;overflow:hidden;background:
       radial-gradient(120% 90% at 50% 40%, rgba(74,158,255,.05), transparent 70%)}
   .space .plane{position:absolute;inset:0;transform-style:preserve-3d;
     transition:transform 420ms var(--ease)}
@@ -234,7 +246,7 @@
   .node{position:absolute;left:0;top:0;transform-origin:center;
     display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:5px;
     background:rgba(14,16,22,.82);border:1px solid var(--line-2);
-    font-size:11px;font-family:var(--mono);color:var(--ink-2);white-space:nowrap;
+    font-size:12px;font-family:var(--mono);color:var(--ink-2);white-space:nowrap;
     cursor:pointer;
     transition:transform .5s var(--ease),opacity .5s var(--ease),filter .5s var(--ease),
       border-color .3s var(--ease),background .3s var(--ease)}
@@ -308,28 +320,16 @@
     </div>
 
     <header class="hero" id="overview">
-      <div>
-        <h1>Follow<br>the memory.</h1>
+      <div class="heroText">
+        <h1>Follow the memory.</h1>
         <p class="sub">One false statement enters an agent's memory. Watch it spread, survive
-          deletion, and get cut out, across three models.</p>
-        <div class="btns">
-          <button class="btn solid" id="explore">Explore a run &rarr;</button>
-          <a class="btn" href="#methodology">How it works</a>
-        </div>
-      </div>
-      <div>
-        <div class="stack" id="stack"></div>
-      </div>
-      <div class="hero-note">
-        <p class="label">Method</p>
-        <hr>
-        <ul>
-          <li>Inject a lie</li>
-          <li>Let it grow</li>
-          <li>Delete the source</li>
-          <li>See what remains</li>
+          deletion, and get cut out.</p>
+        <ul class="steps">
+          <li>Inject a lie</li><li>Let it grow</li><li>Delete the source</li><li>See what remains</li>
         </ul>
       </div>
+      <div class="matrices" id="matrices" role="img"
+        aria-label="The same memory store under three models: the poisoned memory spreads through what was derived from it, then that branch is rolled back."></div>
     </header>
 
     <main class="pad">
@@ -1051,13 +1051,83 @@ function paintMatrix() {
     }).join("") + `</tbody></table>`;
 }
 
-async function paintStack() {
+
+/* ---------- hero matrices ----------
+   Three panes, one per model, drawn from that model's run 1 trace. The sequence
+   plays once: the web-sourced write appears, distrust spreads down the edges it
+   was derived through, then the branch is rolled back and the supported
+   descendant survives. It settles there. Nothing loops. */
+async function paintMatrices() {
   const keys = Object.keys(MODELS).map(k => MODELS[k]);
   const traces = await Promise.all(keys.map(m =>
     fetch("traces/claude-" + m.key + "-1.json").then(r => r.json()).catch(() => null)));
-  $("#stack").innerHTML = keys.map((m, i) => traces[i]
-    ? `<figure class="pane">${miniGraph(traces[i], 210, 200)}
-       <figcaption>${m.short}</figcaption></figure>` : "").join("");
+  const W = 230, H = 150;
+
+  const panes = keys.map((m, i) => {
+    const t = traces[i];
+    if (!t) return "";
+    const fin = t.steps.find(x => x.kind === "final");
+    const rb = t.steps.find(x => x.kind === "rollback");
+    const runs = t.steps.find(x => x.kind === "run");
+    const ed = edgesOf(fin.memories, false);
+    const pos = layout(fin.memories, ed, W, H, 11);
+    const failed = runs.runs.filter(r => r.outcome !== "CORRECT").length;
+    const edges = ed.map(pr => {
+      const a = pos[pr[0]], b = pos[pr[1]];
+      if (!a || !b) return "";
+      return `<line class="medge" data-a="${pr[0]}" data-b="${pr[1]}"
+        x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#262b38" opacity=".8"/>`;
+    }).join("");
+    const nodes = fin.memories.map(x => `<circle class="mnode" data-id="${x.id}"
+      data-src="${x.source}" cx="${pos[x.id].x}" cy="${pos[x.id].y}" r="3.2"
+      fill="#8e97a8" opacity=".85"/>`).join("");
+    return `<figure class="matrix" data-i="${i}">
+      <svg viewBox="0 0 ${W} ${H}" aria-hidden="true">${edges}${nodes}</svg>
+      <figcaption>${m.short}<b>${failed} of ${runs.runs.length} failed</b></figcaption>
+    </figure>`;
+  }).join("");
+  $("#matrices").innerHTML = panes;
+
+  keys.forEach((m, i) => {
+    const t = traces[i];
+    if (!t) return;
+    const rb = t.steps.find(x => x.kind === "rollback");
+    const fin = t.steps.find(x => x.kind === "final");
+    const pane = $(`.matrix[data-i="${i}"]`);
+    const N = id => pane.querySelector(`.mnode[data-id="${id}"]`);
+    const web = fin.memories.find(x => x.source === "web");
+    const downstream = rb.deactivated.concat(rb.preserved)
+      .filter(id => !web || id !== web.id);
+
+    const steps = [
+      [0, () => {
+        if (web && N(web.id)) { N(web.id).setAttribute("fill", "#f2555a"); N(web.id).setAttribute("r", 5); }
+      }],
+      [1, () => {
+        downstream.forEach(id => N(id) && N(id).setAttribute("fill", "#f2555a"));
+        pane.querySelectorAll(".medge").forEach(e => {
+          if (rb.deactivated.indexOf(e.dataset.a) >= 0 || rb.deactivated.indexOf(e.dataset.b) >= 0)
+            e.setAttribute("stroke", "#f2555a");
+        });
+      }],
+      [2, () => {
+        rb.deactivated.forEach(id => {
+          const n = N(id);
+          if (n) { n.setAttribute("opacity", ".22"); n.setAttribute("r", 2.4); }
+        });
+        rb.preserved.forEach(id => {
+          const n = N(id);
+          if (n) { n.setAttribute("fill", "#3ddc84"); n.setAttribute("r", 4.4); }
+        });
+        pane.querySelectorAll(".medge").forEach(e => {
+          if (rb.deactivated.indexOf(e.dataset.a) >= 0 && rb.deactivated.indexOf(e.dataset.b) >= 0)
+            e.setAttribute("opacity", ".2");
+        });
+      }],
+    ];
+    if (REDUCED) { steps.forEach(st => st[1]()); return; }
+    steps.forEach(st => setTimeout(st[1], 700 + st[0] * 1150 + i * 220));
+  });
 }
 
 async function loadTrace() {
@@ -1083,12 +1153,10 @@ async function boot() {
   paintMatrix();
   await loadTrace();
   paintCompare("graph");
-  paintStack();
+  paintMatrices();
 
   $("#model").onchange = () => { paintRuns(); loadTrace(); };
   $("#policy").onchange = loadTrace;
-  $("#explore").onclick = () =>
-    $("#memory").scrollIntoView({behavior: REDUCED ? "auto" : "smooth", block: "start"});
   $$(".tabs button").forEach(b => b.onclick = () => {
     $$(".tabs button").forEach(x => x.setAttribute("aria-selected", "false"));
     b.setAttribute("aria-selected", "true");
