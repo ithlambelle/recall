@@ -6,3 +6,4 @@ node_modules/
 .next/
 out/
 *.log
+last_trace.json
