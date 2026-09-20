@@ -43,6 +43,13 @@ def main() -> None:
         print(f"traces/{src.name}  {t['summary']['usage']['model']}  "
               f"recovered {t['summary']['recovered']}/{t['summary']['tasks']}  before={before}")
 
+    # The nine-run matrix, exported so the run selector shows real summaries.
+    mx = ROOT / "matrix_results.json"
+    if mx.exists():
+        rows = [r for r in json.loads(mx.read_text()) if r.get("ok")]
+        (TRACES / "matrix.json").write_text(json.dumps(rows))
+        print(f"traces/matrix.json  {len(rows)} recorded runs")
+
     first = ROOT / "traces" / "claude-haiku.json"
     if first.exists():
         (DOCS / "api").mkdir(parents=True, exist_ok=True)
