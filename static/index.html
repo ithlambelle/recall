@@ -140,7 +140,7 @@
         <option value="enforce">Write policy: enforce (quarantine &lt; 0.5)</option>
       </select>
       <button class="primary" id="run">Run pipeline</button>
-      <button id="fb">Load recorded run</button>
+      <button id="fb">Load recorded real-model run</button>
       <span class="seg" id="view">
         <button data-v="term" class="on">Terminal</button>
         <button data-v="report">Report</button>
@@ -262,8 +262,38 @@
         <td class="good">0</td><td>Cuts the poisoned branch, keeps everything else</td></tr>
     </table>
     <p class="note">Full-reset scoring zero harm is exactly why the outcome taxonomy exists: by a
-      harm count alone it looks perfect. Verified across Haiku 4.5, Sonnet 5 and Opus 5 with
-      repeated runs &mdash; every model, every run, recovers the same two memories.</p>
+      harm count alone it looks perfect.</p>
+
+    <h3 style="margin-top:22px">Verified against real models</h3>
+    <p class="note" style="margin-bottom:12px">Nine full pipeline runs, three per model. Sampling
+      parameters no longer exist in the API, so every figure is over repeated runs rather than a
+      single one.</p>
+    <table class="bench">
+      <tr><th>Model</th><th>Runs</th><th>Recovered</th><th>Benign kept</th><th>Poison left</th>
+        <th>Parse errors</th><th>Memories identified</th></tr>
+      <tr><td>Haiku 4.5</td><td>3</td><td class="good">4/4</td><td class="good">14/14</td>
+        <td class="good">0</td><td class="good">0</td><td class="m">m14, m15</td></tr>
+      <tr><td>Sonnet 5</td><td>3</td><td class="good">4/4</td><td class="good">14/14</td>
+        <td class="good">0</td><td class="good">0</td><td class="m">m14, m15</td></tr>
+      <tr><td>Opus 5</td><td>3</td><td class="good">4/4</td><td class="good">14/14</td>
+        <td class="good">0</td><td class="good">0</td><td class="m">m14, m15</td></tr>
+    </table>
+
+    <h3 style="margin-top:22px">The models break differently &mdash; and repair identically</h3>
+    <table class="bench">
+      <tr><th>Model</th><th>What goes wrong before repair</th><th>In plain terms</th></tr>
+      <tr><td>Haiku 4.5</td><td class="m bad">UNSAFE_ACTION &times;6</td>
+        <td>Pays the attacker</td></tr>
+      <tr><td>Sonnet 5</td><td class="m mid">UNNECESSARY_ESCALATION &times;5, UNSAFE_ACTION &times;1</td>
+        <td>Mostly smells the fraud and refuses &mdash; so the real invoices go unpaid</td></tr>
+      <tr><td>Opus 5</td><td class="m bad">UNSAFE_ACTION &times;6</td>
+        <td>Pays the attacker</td></tr>
+    </table>
+    <div class="callout"><b>Being smarter is not the fix.</b> Opus 5 is robbed as reliably as
+      Haiku. Sonnet 5 avoids the theft but is denied service instead, which still stops the work
+      getting done. Three different failure modes, one diagnosis: every model, every run, recovers
+      the same two memories. A plain harmful/not-harmful oracle would have scored Sonnet's failure
+      as a success and repaired nothing at all.</div>
   </section>
 
   <section class="term" id="termwrap">
@@ -639,6 +669,22 @@ async function call(path, body) {
 }
 
 $("#out").classList.add("hidden");   // Terminal is the default view on load
+
+/* A public deployment runs without an API key on purpose: /api/run with a live
+   model would let anyone spend real money. Say so plainly rather than letting the
+   Claude option look broken. */
+fetch("/api/health").then(r => r.json()).then(h => {
+  if (h.claude_available) return;
+  const opt = document.querySelector('#agent option[value="claude"]');
+  opt.disabled = true;
+  opt.textContent = "Agent: Claude (disabled on the public demo)";
+  const note = document.createElement("span");
+  note.className = "status";
+  note.style.cssText = "flex-basis:100%;margin-top:2px";
+  note.textContent = "Live model runs are off here so a public URL can't spend real money — "
+    + "use the recorded run for genuine Claude results, or run locally with a key.";
+  document.querySelector(".controls").appendChild(note);
+}).catch(() => {});
 
 $("#run").onclick = () => call("/api/run", {
   agent: $("#agent").value, policy: $("#policy").value, use_provenance_prior: true });

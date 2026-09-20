@@ -24,6 +24,10 @@ env.load()
 ROOT = pathlib.Path(__file__).parent
 STATIC = ROOT / "static"
 FALLBACK = ROOT / "last_trace.json"
+# A real-model run committed to the repo, so a deployment without an API key can
+# still show genuine Claude results. Deploying *with* a key would expose a public
+# endpoint that spends real money per request.
+RECORDED = ROOT / "recorded_trace.json"
 
 app = FastAPI(title="Recall", docs_url="/api/docs")
 _lock = threading.Lock()  # one pipeline at a time; runs are short and CPU-light
@@ -73,10 +77,15 @@ def run(req: RunRequest):
 
 @app.get("/api/fallback")
 def fallback():
-    """Last successful trace, for demoing if the network or the API is down."""
-    if not FALLBACK.exists():
-        raise HTTPException(404, "no recorded trace yet")
-    return json.loads(FALLBACK.read_text())
+    """A real-model trace to show when live runs are unavailable.
+
+    Prefers the committed recording, which is what a keyless deployment serves,
+    and falls back to whatever this process last ran locally.
+    """
+    for path in (RECORDED, FALLBACK):
+        if path.exists():
+            return json.loads(path.read_text())
+    raise HTTPException(404, "no recorded trace available")
 
 
 @app.get("/")
